@@ -13,9 +13,8 @@ const STATE_FILE = path.join(__dirname, 'dm-daemon-state.json');
 
 function loadLastSeen() {
   try {
-    if (fs.existsSync(STATE_FILE)) {
+    if (fs.existsSync(STATE_FILE))
       return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')).lastSeen || null;
-    }
   } catch {}
   return null;
 }
@@ -70,7 +69,6 @@ async function poll() {
     }
 
     const dms = await res.json();
-
     if (!Array.isArray(dms) || dms.length === 0) return;
 
     lastSeen = dms[dms.length - 1].created_at;
@@ -84,10 +82,10 @@ async function poll() {
       triggering = true;
       const text = buildEventText(dms);
       log(`Triggering OpenClaw heartbeat:\n${text}`);
-      // Escape double quotes inside the text for the shell
-      const escaped = text.replace(/"/g, '\\"');
-      const cmd = `"${openclawPath}" system event --text "${escaped}" --mode now --expect-final`;
-      const child = spawn(cmd, { shell: true, stdio: ['ignore', 'pipe', 'pipe'] });
+
+      // Pass args as array — no shell, no quoting issues, newlines preserved
+      const args = ['system', 'event', '--text', text, '--mode', 'now', '--expect-final'];
+      const child = spawn(openclawPath, args, { stdio: ['ignore', 'pipe', 'pipe'] });
       let out = '';
       child.stdout.on('data', d => { out += d.toString(); });
       child.stderr.on('data', d => { out += d.toString(); });
