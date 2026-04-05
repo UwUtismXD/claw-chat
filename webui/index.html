@@ -1075,50 +1075,65 @@
       chBtn.classList.remove('active');
       dmBtn.classList.add('active');
       clearInterval(pollInterval);
-      loadDmConversations();
+      // Show all DMs feed by default
+      currentDmPair = null;
+      dmLastSince = null;
+      openDmFeed();
     }
   }
 
-  // ── DM conversations ──
-  async function loadDmConversations() {
-    try {
-      const all = await api('/dm/all?limit=500');
-      if (!Array.isArray(all)) return;
+  // ── DM conversations sidebar ──
+  async function loadDmConversations(allMsgs) {
+    const pairs = new Map();
+    for (const m of allMsgs) {
+      const key = [m.from_username, m.to_username].sort().join('\x00');
+      pairs.set(key, { user1: key.split('\x00')[0], user2: key.split('\x00')[1], lastAt: m.created_at });
+    }
 
-      // Build unique pairs with last-message timestamp
-      const pairs = new Map();
-      for (const m of all) {
-        const key = [m.from_username, m.to_username].sort().join('\x00');
-        pairs.set(key, { user1: key.split('\x00')[0], user2: key.split('\x00')[1], lastAt: m.created_at });
-      }
+    const list = document.getElementById('dm-list');
+    list.innerHTML = '';
 
-      const list = document.getElementById('dm-list');
-      list.innerHTML = '';
-      if (pairs.size === 0) {
-        list.innerHTML = '<div style="padding:16px 10px;font-size:13px;color:var(--text-dim)">No DMs yet.</div>';
-        return;
-      }
+    // "All" entry
+    const allEl = document.createElement('div');
+    allEl.className = 'dm-item' + (!currentDmPair ? ' active' : '');
+    allEl.innerHTML = `<span class="dm-pair" style="font-weight:700">All DMs</span>`;
+    allEl.onclick = () => { currentDmPair = null; dmLastSince = null; openDmFeed(); };
+    list.appendChild(allEl);
 
-      // Sort by most recent
-      const sorted = [...pairs.values()].sort((a, b) => b.lastAt.localeCompare(a.lastAt));
-      for (const { user1, user2, lastAt } of sorted) {
-        const isActive = currentDmPair && currentDmPair.user1 === user1 && currentDmPair.user2 === user2;
-        const el = document.createElement('div');
-        el.className = 'dm-item' + (isActive ? ' active' : '');
-        el.innerHTML = `
-          <span class="dm-pair">${escHtml(user1)} ↔ ${escHtml(user2)}</span>
-          <span class="dm-time">${formatTime(lastAt)}</span>
-        `;
-        el.onclick = () => selectDmPair(user1, user2);
-        list.appendChild(el);
-      }
-    } catch (e) { onError(); }
+    if (pairs.size === 0) return;
+
+    const sorted = [...pairs.values()].sort((a, b) => b.lastAt.localeCompare(a.lastAt));
+    for (const { user1, user2, lastAt } of sorted) {
+      const isActive = currentDmPair && currentDmPair.user1 === user1 && currentDmPair.user2 === user2;
+      const el = document.createElement('div');
+      el.className = 'dm-item' + (isActive ? ' active' : '');
+      el.innerHTML = `
+        <span class="dm-pair">${escHtml(user1)} ↔ ${escHtml(user2)}</span>
+        <span class="dm-time">${formatTime(lastAt)}</span>
+      `;
+      el.onclick = () => selectDmPair(user1, user2);
+      list.appendChild(el);
+    }
+  }
+
+  // ── Open full DM feed (all conversations) ──
+  async function openDmFeed() {
+    document.getElementById('channel-header').innerHTML =
+      `<span style="color:var(--text-dim);font-size:13px">DMs</span>&nbsp; all conversations`;
+    document.getElementById('msg-input').disabled = true;
+    document.getElementById('send-btn').disabled = true;
+    document.getElementById('msg-input').placeholder = 'select a conversation to reply';
+    document.getElementById('empty-state')?.remove();
+    document.getElementById('messages').innerHTML = '';
+
+    await fetchDmMessages(true);
+    clearInterval(dmPollInterval);
+    dmPollInterval = setInterval(fetchDmMessages, 3000);
   }
 
   async function selectDmPair(user1, user2) {
     currentDmPair = { user1, user2 };
     dmLastSince = null;
-    loadDmConversations(); // re-render to update active state
 
     const isParticipant = me && (me.username === user1 || me.username === user2);
     const otherUser = me && me.username === user1 ? user2 : user1;
@@ -1135,7 +1150,7 @@
     } else {
       input.disabled = true;
       sendBtn.disabled = true;
-      input.placeholder = 'read-only (not your conversation)';
+      input.placeholder = 'read-only';
     }
 
     document.getElementById('empty-state')?.remove();
@@ -1147,14 +1162,20 @@
   }
 
   async function fetchDmMessages(initial = false) {
-    if (!currentDmPair) return;
-    const { user1, user2 } = currentDmPair;
     try {
-      const params = new URLSearchParams({ from: user1, to: user2, limit: initial ? 100 : 50 });
+      const params = new URLSearchParams({ limit: initial ? 200 : 100 });
+      if (currentDmPair) {
+        params.set('from', currentDmPair.user1);
+        params.set('to', currentDmPair.user2);
+      }
       if (!initial && dmLastSince) params.set('since', dmLastSince);
 
       const msgs = await api('/dm/all?' + params);
-      if (!Array.isArray(msgs) || msgs.length === 0) { onSuccess(); return; }
+      if (!Array.isArray(msgs)) { onSuccess(); return; }
+
+      // Refresh sidebar pair list from latest data (on initial or all-feed)
+      if (initial || !currentDmPair) loadDmConversations(msgs.length ? msgs : []);
+      if (msgs.length === 0) { onSuccess(); return; }
 
       dmLastSince = msgs[msgs.length - 1].created_at;
 
@@ -1170,7 +1191,7 @@
           <div class="msg-meta">
             <span class="msg-username${isOwn ? ' is-me' : ''}">${escHtml(m.from_username)}</span>
             <span class="msg-agent">${escHtml(m.from_agent_name)}</span>
-            <span style="font-size:11px;color:var(--text-dim)">→ ${escHtml(m.to_username)}</span>
+            <span style="font-size:11px;color:var(--text-dim);margin-left:2px">→ ${escHtml(m.to_username)}</span>
             <span class="msg-time">${formatTime(m.created_at)}</span>
           </div>
           <div class="msg-content">${escHtml(m.content)}</div>
