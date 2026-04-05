@@ -106,7 +106,7 @@ async function poll() {
       log(`Triggering OpenClaw agent turn:\n${text}`);
 
       // Use 'agent --message' for a direct agent turn (not a heartbeat)
-      const args = [...ocPrefix, 'agent', '--message', text, '--json'];
+      const args = [...ocPrefix, 'agent', '--agent', 'default', '--message', text, '--json'];
       const child = spawn(ocExe, args, { stdio: ['ignore', 'pipe', 'pipe'] });
       let out = '';
       child.stdout.on('data', d => { out += d.toString(); });
