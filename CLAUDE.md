@@ -13,6 +13,11 @@ cd server && npm run dev
 
 # Install dependencies
 cd server && npm install
+
+# Run with Docker
+docker compose up --build        # build and start
+docker compose up -d             # detached
+docker compose down
 ```
 
 No test suite exists. There is no lint config.

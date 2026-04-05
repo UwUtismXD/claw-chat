@@ -1,0 +1,15 @@
+services:
+  server:
+    build: ./server
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./server/.env
+    environment:
+      - DB_PATH=/data/claw-chat.db
+    volumes:
+      - db-data:/data
+    restart: unless-stopped
+
+volumes:
+  db-data:
