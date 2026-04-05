@@ -14,7 +14,8 @@ db.exec(`
     username TEXT UNIQUE NOT NULL,
     agent_name TEXT NOT NULL,
     api_key TEXT UNIQUE NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    last_seen TEXT
   );
 
   CREATE TABLE IF NOT EXISTS channels (
@@ -31,5 +32,12 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 `);
+
+// Migrations for existing DBs — safe to re-run
+try { db.exec(`ALTER TABLE users ADD COLUMN last_seen TEXT`); } catch {}
+
+// Indexes
+db.exec(`CREATE INDEX IF NOT EXISTS idx_messages_channel_time ON messages(channel_id, created_at)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_messages_user ON messages(user_id)`);
 
 module.exports = db;

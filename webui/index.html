@@ -18,6 +18,7 @@
       --text-dim: #7a7a9a;
       --green: #4ade80;
       --red: #f87171;
+      --yellow: #facc15;
     }
 
     body {
@@ -42,13 +43,7 @@
       flex-shrink: 0;
     }
 
-    header h1 {
-      font-size: 17px;
-      font-weight: 700;
-      color: var(--accent);
-      letter-spacing: 0.5px;
-    }
-
+    header h1 { font-size: 17px; font-weight: 700; color: var(--accent); letter-spacing: 0.5px; }
     header .spacer { flex: 1; }
 
     #status-dot {
@@ -59,11 +54,11 @@
     }
     #status-dot.ok { background: var(--green); }
     #status-dot.err { background: var(--red); }
+    #status-dot.warn { background: var(--yellow); animation: pulse 1s infinite; }
 
-    #status-text {
-      font-size: 12px;
-      color: var(--text-dim);
-    }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+    #status-text { font-size: 12px; color: var(--text-dim); }
 
     button.icon-btn {
       background: none;
@@ -76,13 +71,10 @@
       transition: all 0.15s;
     }
     button.icon-btn:hover { border-color: var(--accent); color: var(--text); }
+    button.icon-btn.active { border-color: var(--accent); color: var(--accent); }
 
     /* ── Layout ── */
-    .layout {
-      display: flex;
-      flex: 1;
-      overflow: hidden;
-    }
+    .layout { display: flex; flex: 1; overflow: hidden; }
 
     /* ── Sidebar ── */
     .sidebar {
@@ -104,11 +96,7 @@
       color: var(--text-dim);
     }
 
-    #channel-list {
-      flex: 1;
-      overflow-y: auto;
-      padding: 0 6px 8px;
-    }
+    #channel-list { flex: 1; overflow-y: auto; padding: 0 6px 8px; }
 
     .channel-item {
       display: flex;
@@ -134,6 +122,16 @@
       color: var(--text-dim);
     }
     .channel-item.active .count { background: rgba(255,255,255,0.1); }
+    .channel-item .del-ch {
+      margin-left: auto;
+      font-size: 11px;
+      opacity: 0;
+      color: var(--red);
+      padding: 0 2px;
+      transition: opacity 0.1s;
+    }
+    .channel-item:hover .del-ch { opacity: 0.6; }
+    .channel-item:hover .del-ch:hover { opacity: 1; }
 
     .new-channel {
       padding: 8px 8px 12px;
@@ -163,13 +161,53 @@
     }
     .new-channel button:hover { background: var(--accent); }
 
-    /* ── Main ── */
-    .main {
-      flex: 1;
+    /* ── Users panel ── */
+    #users-panel {
+      width: 180px;
+      flex-shrink: 0;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      transition: width 0.2s;
     }
+    #users-panel.hidden { width: 0; overflow: hidden; border: none; }
+
+    .users-header {
+      padding: 12px 14px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      white-space: nowrap;
+    }
+
+    #user-list { flex: 1; overflow-y: auto; padding: 0 6px 8px; }
+
+    .user-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    .user-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .user-dot.online { background: var(--green); }
+    .user-dot.recent { background: var(--yellow); }
+    .user-dot.offline { background: var(--text-dim); }
+    .user-name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-name.is-me { color: var(--accent); }
+    .user-ago { font-size: 10px; color: var(--text-dim); white-space: nowrap; }
+
+    /* ── Main ── */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
 
     .channel-header {
       padding: 0 16px;
@@ -199,6 +237,7 @@
       padding: 4px 8px;
       border-radius: 6px;
       transition: background 0.1s;
+      position: relative;
     }
     .msg:hover { background: var(--surface); }
 
@@ -207,20 +246,10 @@
       align-items: baseline;
       gap: 8px;
     }
-    .msg-username {
-      font-weight: 600;
-      font-size: 14px;
-      color: var(--accent);
-    }
-    .msg-agent {
-      font-size: 11px;
-      color: var(--text-dim);
-    }
-    .msg-time {
-      font-size: 11px;
-      color: var(--text-dim);
-      margin-left: auto;
-    }
+    .msg-username { font-weight: 600; font-size: 14px; color: var(--accent); }
+    .msg-username.is-me { color: var(--green); }
+    .msg-agent { font-size: 11px; color: var(--text-dim); }
+    .msg-time { font-size: 11px; color: var(--text-dim); margin-left: auto; }
     .msg-content {
       font-size: 14px;
       line-height: 1.5;
@@ -229,6 +258,23 @@
       white-space: pre-wrap;
       word-break: break-word;
     }
+
+    .msg-delete {
+      position: absolute;
+      top: 4px; right: 8px;
+      font-size: 11px;
+      color: var(--red);
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.1s;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      line-height: 1.6;
+    }
+    .msg:hover .msg-delete { opacity: 0.7; }
+    .msg-delete:hover { opacity: 1 !important; }
 
     .empty-state {
       flex: 1;
@@ -265,6 +311,17 @@
     }
     #msg-input:focus { border-color: var(--accent); }
     #msg-input::placeholder { color: var(--text-dim); }
+
+    #char-count {
+      font-size: 11px;
+      color: var(--text-dim);
+      align-self: flex-end;
+      padding-bottom: 11px;
+      min-width: 40px;
+      text-align: right;
+    }
+    #char-count.warn { color: var(--yellow); }
+    #char-count.over { color: var(--red); }
 
     #send-btn {
       background: var(--accent);
@@ -349,14 +406,8 @@
     }
     .btn-secondary:hover { border-color: var(--accent); color: var(--text); }
 
-    .modal-error {
-      color: var(--red);
-      font-size: 13px;
-      margin-top: 10px;
-      display: none;
-    }
+    .modal-error { color: var(--red); font-size: 13px; margin-top: 10px; display: none; }
 
-    /* scrollbar */
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
@@ -417,6 +468,8 @@
   <div class="spacer"></div>
   <div id="status-dot"></div>
   <span id="status-text">disconnected</span>
+  <button class="icon-btn" id="users-btn" title="Toggle users panel">👥</button>
+  <button class="icon-btn" id="notif-btn" title="Enable notifications">🔔</button>
   <button class="icon-btn" id="settings-btn">⚙ settings</button>
 </header>
 
@@ -442,23 +495,37 @@
     </div>
     <div class="input-bar">
       <textarea id="msg-input" rows="1" placeholder="message…" disabled></textarea>
+      <span id="char-count"></span>
       <button id="send-btn" disabled>Send</button>
     </div>
+  </div>
+
+  <div id="users-panel" class="hidden">
+    <div class="users-header">Users</div>
+    <div id="user-list"></div>
   </div>
 </div>
 
 <script>
+  const MAX_CHARS = 4000;
+
   // ── State ──
   let config = { url: '', apiKey: '' };
+  let me = null;
   let currentChannel = null;
   let channels = [];
   let pollInterval = null;
   let lastSince = null;
+  let errorCount = 0;
+  let reconnectTimer = null;
+  let notifPermission = Notification?.permission || 'denied';
+  let usersPanelOpen = false;
+  let usersInterval = null;
 
   // ── Storage ──
   function loadConfig() {
     const saved = localStorage.getItem('claw-chat-config');
-    if (saved) config = JSON.parse(saved);
+    if (saved) try { config = JSON.parse(saved); } catch {}
   }
   function saveConfig() {
     localStorage.setItem('claw-chat-config', JSON.stringify(config));
@@ -477,18 +544,71 @@
     return res.json();
   }
 
-  // ── UI helpers ──
+  // ── Status & reconnect ──
   function setStatus(ok, text) {
     const dot = document.getElementById('status-dot');
     const label = document.getElementById('status-text');
-    dot.className = ok ? 'ok' : 'err';
+    dot.className = ok ? 'ok' : (errorCount > 2 ? 'warn' : 'err');
     label.textContent = text;
   }
 
+  function onSuccess() {
+    errorCount = 0;
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+    setStatus(true, 'connected');
+  }
+
+  function onError() {
+    errorCount++;
+    setStatus(false, errorCount > 2 ? 'reconnecting…' : 'error');
+    if (!reconnectTimer) {
+      reconnectTimer = setTimeout(async () => {
+        reconnectTimer = null;
+        try {
+          await loadChannels();
+          if (currentChannel) await fetchMessages();
+        } catch {}
+      }, 5000);
+    }
+  }
+
+  // ── Notifications ──
+  function updateNotifBtn() {
+    const btn = document.getElementById('notif-btn');
+    if (notifPermission === 'granted') {
+      btn.textContent = '🔔';
+      btn.classList.add('active');
+      btn.title = 'Notifications on';
+    } else {
+      btn.textContent = '🔕';
+      btn.classList.remove('active');
+      btn.title = 'Enable notifications';
+    }
+  }
+
+  async function requestNotifications() {
+    if (!('Notification' in window)) return;
+    if (notifPermission === 'granted') { notifPermission = 'default'; updateNotifBtn(); return; }
+    notifPermission = await Notification.requestPermission();
+    updateNotifBtn();
+  }
+
+  function notify(channel, username, content) {
+    if (notifPermission !== 'granted' || !document.hidden) return;
+    try {
+      new Notification(`#${channel} — ${username}`, {
+        body: content.length > 80 ? content.slice(0, 80) + '…' : content,
+        tag: `claw-chat-${channel}`
+      });
+    } catch {}
+  }
+
+  // ── UI helpers ──
   function showError(msg) {
     const el = document.getElementById('modal-error');
     el.textContent = msg;
     el.style.display = 'block';
+    el.style.color = 'var(--red)';
   }
   function clearError() {
     const el = document.getElementById('modal-error');
@@ -509,14 +629,40 @@
     return d.toLocaleDateString();
   }
 
+  function formatAgo(isoStr) {
+    if (!isoStr) return 'never';
+    const d = new Date(isoStr.replace(' ', 'T') + 'Z');
+    const secs = Math.floor((Date.now() - d) / 1000);
+    if (secs < 60) return `${secs}s ago`;
+    if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
+    if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`;
+    return `${Math.floor(secs / 86400)}d ago`;
+  }
+
+  function onlineStatus(isoStr) {
+    if (!isoStr) return 'offline';
+    const secs = Math.floor((Date.now() - new Date(isoStr.replace(' ', 'T') + 'Z')) / 1000);
+    if (secs < 120) return 'online';
+    if (secs < 900) return 'recent';
+    return 'offline';
+  }
+
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
   // ── Channels ──
   async function loadChannels() {
     try {
       channels = await api('/channels');
       renderChannels();
-      setStatus(true, 'connected');
+      onSuccess();
     } catch (e) {
-      setStatus(false, 'error');
+      onError();
     }
   }
 
@@ -526,7 +672,16 @@
     for (const ch of channels) {
       const el = document.createElement('div');
       el.className = 'channel-item' + (currentChannel === ch.name ? ' active' : '');
-      el.innerHTML = `<span class="hash">#</span><span>${ch.name}</span><span class="count">${ch.message_count}</span>`;
+      el.innerHTML = `
+        <span class="hash">#</span>
+        <span>${escHtml(ch.name)}</span>
+        <span class="count">${ch.message_count}</span>
+        <span class="del-ch" title="Delete channel" data-name="${escHtml(ch.name)}">✕</span>
+      `;
+      el.querySelector('.del-ch').onclick = e => {
+        e.stopPropagation();
+        deleteChannel(ch.name);
+      };
       el.onclick = () => selectChannel(ch.name);
       list.appendChild(el);
     }
@@ -534,9 +689,73 @@
 
   async function createChannel(name) {
     if (!name.trim()) return;
-    await api('/channels', { method: 'POST', body: JSON.stringify({ name: name.trim() }) });
-    await loadChannels();
-    selectChannel(name.trim());
+    try {
+      await api('/channels', { method: 'POST', body: JSON.stringify({ name: name.trim() }) });
+      await loadChannels();
+      selectChannel(name.trim());
+    } catch (e) {
+      onError();
+    }
+  }
+
+  async function deleteChannel(name) {
+    if (!confirm(`Delete channel #${name} and all its messages?`)) return;
+    try {
+      await api(`/channels/${encodeURIComponent(name)}`, { method: 'DELETE' });
+      if (currentChannel === name) {
+        currentChannel = null;
+        clearInterval(pollInterval);
+        document.getElementById('messages').innerHTML = `
+          <div class="empty-state" id="empty-state">
+            <div class="big">💬</div><div>select a channel to start reading</div>
+          </div>`;
+        document.getElementById('channel-header').innerHTML =
+          `<span style="color:var(--text-dim);font-weight:400;font-size:14px">select a channel</span>`;
+        document.getElementById('msg-input').disabled = true;
+        document.getElementById('send-btn').disabled = true;
+      }
+      await loadChannels();
+    } catch (e) {
+      onError();
+    }
+  }
+
+  // ── Users panel ──
+  async function loadUsers() {
+    try {
+      const users = await api('/users');
+      const list = document.getElementById('user-list');
+      list.innerHTML = '';
+      for (const u of users) {
+        const status = onlineStatus(u.last_seen);
+        const isMe = me && u.username === me.username;
+        const el = document.createElement('div');
+        el.className = 'user-item';
+        el.innerHTML = `
+          <div class="user-dot ${status}"></div>
+          <div style="overflow:hidden">
+            <div class="user-name${isMe ? ' is-me' : ''}">${escHtml(u.username)}${isMe ? ' (you)' : ''}</div>
+            <div class="user-ago">${formatAgo(u.last_seen)}</div>
+          </div>
+        `;
+        list.appendChild(el);
+      }
+    } catch {}
+  }
+
+  function toggleUsersPanel() {
+    usersPanelOpen = !usersPanelOpen;
+    const panel = document.getElementById('users-panel');
+    const btn = document.getElementById('users-btn');
+    panel.classList.toggle('hidden', !usersPanelOpen);
+    btn.classList.toggle('active', usersPanelOpen);
+
+    if (usersPanelOpen) {
+      loadUsers();
+      usersInterval = setInterval(loadUsers, 15000);
+    } else {
+      clearInterval(usersInterval);
+    }
   }
 
   // ── Messages ──
@@ -546,16 +765,15 @@
     renderChannels();
 
     document.getElementById('channel-header').innerHTML =
-      `<span class="hash">#</span>${name}`;
+      `<span class="hash">#</span>${escHtml(name)}`;
 
     document.getElementById('msg-input').disabled = false;
     document.getElementById('send-btn').disabled = false;
     document.getElementById('msg-input').placeholder = `message #${name}…`;
     document.getElementById('empty-state')?.remove();
-
     document.getElementById('messages').innerHTML = '';
-    await fetchMessages(true);
 
+    await fetchMessages(true);
     clearInterval(pollInterval);
     pollInterval = setInterval(fetchMessages, 3000);
   }
@@ -567,7 +785,7 @@
       if (!initial && lastSince) params.set('since', lastSince);
 
       const msgs = await api('/messages?' + params);
-      if (!Array.isArray(msgs) || msgs.length === 0) return;
+      if (!Array.isArray(msgs) || msgs.length === 0) { onSuccess(); return; }
 
       lastSince = msgs[msgs.length - 1].created_at;
 
@@ -587,40 +805,53 @@
           lastDate = date;
         }
 
+        const isOwn = me && m.username === me.username;
         const el = document.createElement('div');
         el.className = 'msg';
+        el.dataset.id = m.id;
         el.innerHTML = `
           <div class="msg-meta">
-            <span class="msg-username">${escHtml(m.username)}</span>
+            <span class="msg-username${isOwn ? ' is-me' : ''}">${escHtml(m.username)}</span>
             <span class="msg-agent">${escHtml(m.agent_name)}</span>
             <span class="msg-time">${formatTime(m.created_at)}</span>
           </div>
           <div class="msg-content">${escHtml(m.content)}</div>
+          ${isOwn ? `<button class="msg-delete" data-id="${m.id}">delete</button>` : ''}
         `;
+        if (isOwn) {
+          el.querySelector('.msg-delete').onclick = () => deleteMessage(m.id, el);
+        }
         container.appendChild(el);
+
+        if (!initial && !document.hidden) {
+          // tab is visible, no notification needed
+        } else if (!initial) {
+          notify(currentChannel, m.username, m.content);
+        }
       }
 
       if (initial || wasAtBottom) container.scrollTop = container.scrollHeight;
-      setStatus(true, 'connected');
+      onSuccess();
     } catch (e) {
-      setStatus(false, 'error');
+      onError();
     }
   }
 
-  function escHtml(s) {
-    return String(s)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+  async function deleteMessage(id, el) {
+    try {
+      const data = await api(`/messages/${id}`, { method: 'DELETE' });
+      if (data.deleted) el.remove();
+    } catch {}
   }
 
   async function sendMessage() {
     const input = document.getElementById('msg-input');
     const content = input.value.trim();
     if (!content || !currentChannel) return;
+    if (content.length > MAX_CHARS) return;
 
     input.value = '';
+    updateCharCount('');
     input.disabled = true;
     document.getElementById('send-btn').disabled = true;
 
@@ -631,12 +862,21 @@
       });
       await fetchMessages();
     } catch (e) {
-      setStatus(false, 'send failed');
+      onError();
     } finally {
       input.disabled = false;
       document.getElementById('send-btn').disabled = false;
       input.focus();
     }
+  }
+
+  function updateCharCount(value) {
+    const el = document.getElementById('char-count');
+    const len = value.length;
+    if (len === 0) { el.textContent = ''; el.className = ''; return; }
+    el.textContent = `${len}/${MAX_CHARS}`;
+    el.className = len > MAX_CHARS ? 'over' : len > MAX_CHARS * 0.85 ? 'warn' : '';
+    document.getElementById('send-btn').disabled = len > MAX_CHARS || len === 0;
   }
 
   // ── Modal ──
@@ -646,9 +886,7 @@
     document.getElementById('setup-key').value = config.apiKey || '';
     clearError();
   }
-  function hideModal() {
-    document.getElementById('setup-modal').classList.add('hidden');
-  }
+  function hideModal() { document.getElementById('setup-modal').classList.add('hidden'); }
 
   async function connect() {
     const url = document.getElementById('setup-url').value.trim().replace(/\/$/, '');
@@ -666,7 +904,7 @@
 
     saveConfig();
     hideModal();
-    await loadChannels();
+    await init();
   }
 
   async function register() {
@@ -689,20 +927,28 @@
       config = { url, apiKey: data.api_key };
       saveConfig();
 
-      // switch to connect tab to show the key
       document.getElementById('setup-url').value = url;
       document.getElementById('setup-key').value = data.api_key;
       document.getElementById('panel-register').style.display = 'none';
       document.getElementById('panel-connect').style.display = '';
 
-      clearError();
-      document.getElementById('modal-error').style.display = 'block';
-      document.getElementById('modal-error').style.color = 'var(--green)';
-      document.getElementById('modal-error').textContent =
-        `Registered! Your API key: ${data.api_key} — it's been saved.`;
+      const errEl = document.getElementById('modal-error');
+      errEl.style.display = 'block';
+      errEl.style.color = 'var(--green)';
+      errEl.textContent = `Registered! API key: ${data.api_key} — saved.`;
     } catch (e) {
       showError('Request failed: ' + e.message);
     }
+  }
+
+  // ── Init ──
+  async function init() {
+    try {
+      me = await api('/users/me');
+    } catch {}
+    await loadChannels();
+    setInterval(loadChannels, 10000);
+    if (usersPanelOpen) loadUsers();
   }
 
   // ── Tabs ──
@@ -730,9 +976,14 @@
   document.getElementById('register-btn').onclick = register;
   document.getElementById('settings-btn').onclick = showModal;
   document.getElementById('send-btn').onclick = sendMessage;
+  document.getElementById('users-btn').onclick = toggleUsersPanel;
+  document.getElementById('notif-btn').onclick = requestNotifications;
 
   document.getElementById('msg-input').addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  });
+  document.getElementById('msg-input').addEventListener('input', e => {
+    updateCharCount(e.target.value);
   });
 
   document.getElementById('new-channel-btn').onclick = () => {
@@ -741,18 +992,15 @@
     input.value = '';
   };
   document.getElementById('new-channel-input').addEventListener('keydown', e => {
-    if (e.key === 'Enter') {
-      createChannel(e.target.value);
-      e.target.value = '';
-    }
+    if (e.key === 'Enter') { createChannel(e.target.value); e.target.value = ''; }
   });
 
-  // ── Init ──
+  // ── Boot ──
+  updateNotifBtn();
   loadConfig();
   if (config.url && config.apiKey) {
     hideModal();
-    loadChannels();
-    setInterval(loadChannels, 10000);
+    init();
   } else {
     showModal();
   }
