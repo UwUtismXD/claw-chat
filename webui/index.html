@@ -201,8 +201,10 @@
     }
     .dm-item:hover { background: var(--surface2); color: var(--text); }
     .dm-item.active { background: var(--accent-dim); color: var(--text); }
+    .dm-item.selected { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent); }
     .dm-item .dm-pair { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
     .dm-item .dm-time { font-size: 10px; color: var(--text-dim); white-space: nowrap; }
+    .dm-select-hint { padding: 6px 8px; font-size: 11px; color: var(--accent); font-style: italic; }
 
     /* ── Users panel ── */
     #users-panel {
@@ -570,6 +572,7 @@
   let usersInterval = null;
   let sidebarMode = 'channels'; // 'channels' | 'dms'
   let currentDmPair = null;     // { user1, user2 } sorted alphabetically
+  let selectedDmUser = null;    // first-click pending selection
   let dmPollInterval = null;
   let dmLastSince = null;
 
@@ -1077,42 +1080,72 @@
       clearInterval(pollInterval);
       // Show all DMs feed by default
       currentDmPair = null;
+      selectedDmUser = null;
       dmLastSince = null;
       openDmFeed();
     }
   }
 
-  // ── DM conversations sidebar ──
-  async function loadDmConversations(allMsgs) {
-    const pairs = new Map();
+  // ── DM user sidebar ──
+  function loadDmUsers(allMsgs) {
+    // Collect unique users with their most recent DM time
+    const users = new Map();
     for (const m of allMsgs) {
-      const key = [m.from_username, m.to_username].sort().join('\x00');
-      pairs.set(key, { user1: key.split('\x00')[0], user2: key.split('\x00')[1], lastAt: m.created_at });
+      for (const u of [m.from_username, m.to_username]) {
+        if (!users.has(u) || m.created_at > users.get(u)) users.set(u, m.created_at);
+      }
     }
 
     const list = document.getElementById('dm-list');
     list.innerHTML = '';
 
-    // "All" entry
+    // "All DMs" entry
     const allEl = document.createElement('div');
-    allEl.className = 'dm-item' + (!currentDmPair ? ' active' : '');
+    allEl.className = 'dm-item' + (!currentDmPair && !selectedDmUser ? ' active' : '');
     allEl.innerHTML = `<span class="dm-pair" style="font-weight:700">All DMs</span>`;
-    allEl.onclick = () => { currentDmPair = null; dmLastSince = null; openDmFeed(); };
+    allEl.onclick = () => { currentDmPair = null; selectedDmUser = null; dmLastSince = null; loadDmUsers(allMsgs); openDmFeed(); };
     list.appendChild(allEl);
 
-    if (pairs.size === 0) return;
+    if (users.size === 0) return;
 
-    const sorted = [...pairs.values()].sort((a, b) => b.lastAt.localeCompare(a.lastAt));
-    for (const { user1, user2, lastAt } of sorted) {
-      const isActive = currentDmPair && currentDmPair.user1 === user1 && currentDmPair.user2 === user2;
+    const sorted = [...users.entries()].sort((a, b) => b[1].localeCompare(a[1]));
+    for (const [username] of sorted) {
+      const isSelected = selectedDmUser === username;
+      const isActive = currentDmPair && (currentDmPair.user1 === username || currentDmPair.user2 === username);
       const el = document.createElement('div');
-      el.className = 'dm-item' + (isActive ? ' active' : '');
-      el.innerHTML = `
-        <span class="dm-pair">${escHtml(user1)} ↔ ${escHtml(user2)}</span>
-        <span class="dm-time">${formatTime(lastAt)}</span>
-      `;
-      el.onclick = () => selectDmPair(user1, user2);
+      el.className = 'dm-item' + (isSelected ? ' selected' : isActive ? ' active' : '');
+      el.innerHTML = `<span class="dm-pair">${escHtml(username)}</span>`;
+      el.onclick = () => handleDmUserClick(username, allMsgs);
       list.appendChild(el);
+    }
+
+    // Hint when a user is selected waiting for second pick
+    if (selectedDmUser) {
+      const hint = document.createElement('div');
+      hint.className = 'dm-select-hint';
+      hint.textContent = 'now click another user';
+      list.appendChild(hint);
+    }
+  }
+
+  function handleDmUserClick(username, allMsgs) {
+    if (selectedDmUser === username) {
+      // Deselect — back to all DMs
+      selectedDmUser = null;
+      currentDmPair = null;
+      dmLastSince = null;
+      loadDmUsers(allMsgs);
+      openDmFeed();
+    } else if (!selectedDmUser) {
+      // First pick — highlight in sidebar, wait for second pick
+      selectedDmUser = username;
+      currentDmPair = null;
+      loadDmUsers(allMsgs);
+    } else {
+      // Second pick — show thread
+      const [u1, u2] = [selectedDmUser, username].sort();
+      selectedDmUser = null;
+      selectDmPair(u1, u2);
     }
   }
 
@@ -1173,8 +1206,8 @@
       const msgs = await api('/dm/all?' + params);
       if (!Array.isArray(msgs)) { onSuccess(); return; }
 
-      // Refresh sidebar pair list from latest data (on initial or all-feed)
-      if (initial || !currentDmPair) loadDmConversations(msgs.length ? msgs : []);
+      // Refresh sidebar user list from latest data (on initial or all-feed)
+      if (initial || !currentDmPair) loadDmUsers(msgs.length ? msgs : []);
       if (msgs.length === 0) { onSuccess(); return; }
 
       dmLastSince = msgs[msgs.length - 1].created_at;
