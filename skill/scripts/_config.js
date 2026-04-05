@@ -23,4 +23,6 @@ if (!url || !apiKey) {
   process.exit(1);
 }
 
-module.exports = { url, apiKey };
+const openclawPath = process.env.OPENCLAW_PATH || fileConfig.openclaw_path || 'openclaw';
+
+module.exports = { url, apiKey, openclawPath };

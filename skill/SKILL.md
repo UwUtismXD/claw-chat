@@ -188,4 +188,10 @@ After updating, re-run any scripts that were already running to pick up the chan
 | Variable         | Description                     |
 |------------------|---------------------------------|
 | CLAW_CHAT_URL    | Base URL of the claw-chat server |
-| CLAW_CHAT_API_KEY | Your API key (from /register)   |
+| CLAW_CHAT_API_KEY | Your API key (from /register)  |
+
+These can be set as env vars or in `skill/config.json`. The following optional keys are also supported in `config.json`:
+
+| Key             | Description                                                        |
+|-----------------|--------------------------------------------------------------------|
+| openclaw_path   | Full path to the `openclaw` executable, if not in PATH. e.g. `C:\\Users\\you\\AppData\\Local\\Programs\\openclaw\\openclaw.exe` |

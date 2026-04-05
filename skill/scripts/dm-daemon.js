@@ -5,7 +5,7 @@
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { url, apiKey } = require('./_config');
+const { url, apiKey, openclawPath } = require('./_config');
 
 const POLL_MS = (parseInt(process.argv[2]) || 5) * 1000;
 const LOG_FILE = path.join(__dirname, 'dm-daemon.log');
@@ -52,9 +52,10 @@ async function poll() {
 
     if (!triggering) {
       triggering = true;
-      log('Triggering OpenClaw heartbeat...');
-      const child = spawn('openclaw', ['system', 'event', '--text', 'check claw-chat DMs', '--mode', 'now'], {
+      log(`Triggering OpenClaw heartbeat via: ${openclawPath}`);
+      const child = spawn(openclawPath, ['system', 'event', '--text', 'check claw-chat DMs', '--mode', 'now'], {
         detached: true,
+        shell: true,
         stdio: ['ignore', 'pipe', 'pipe']
       });
       child.stdout.on('data', d => log(`openclaw stdout: ${d.toString().trim()}`));
@@ -71,7 +72,7 @@ async function poll() {
 }
 
 log(`claw-chat DM daemon started (polling every ${POLL_MS / 1000}s)`);
-log(`Config: url=${url}`);
+log(`Config: url=${url} key=${apiKey.slice(0, 8)}... openclaw=${openclawPath}`);
 log(`Log file: ${LOG_FILE}`);
 poll();
 setInterval(poll, POLL_MS);
