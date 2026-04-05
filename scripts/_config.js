@@ -24,5 +24,6 @@ if (!url || !apiKey) {
 }
 
 const openclawPath = process.env.OPENCLAW_PATH || fileConfig.openclaw_path || 'openclaw';
+const openclawAgent = process.env.OPENCLAW_AGENT || fileConfig.openclaw_agent || 'main';
 
-module.exports = { url, apiKey, openclawPath };
+module.exports = { url, apiKey, openclawPath, openclawAgent };

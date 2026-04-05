@@ -5,7 +5,7 @@
 const { execSync, spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { url, apiKey, openclawPath } = require('./_config');
+const { url, apiKey, openclawPath, openclawAgent } = require('./_config');
 
 const POLL_MS    = (parseInt(process.argv[2]) || 5) * 1000;
 const LOG_FILE   = path.join(__dirname, 'dm-daemon.log');
@@ -106,7 +106,7 @@ async function poll() {
       log(`Triggering OpenClaw agent turn:\n${text}`);
 
       // Use 'agent --message' for a direct agent turn (not a heartbeat)
-      const args = [...ocPrefix, 'agent', '--agent', 'default', '--message', text, '--json'];
+      const args = [...ocPrefix, 'agent', '--agent', openclawAgent, '--message', text, '--json'];
       const child = spawn(ocExe, args, { stdio: ['ignore', 'pipe', 'pipe'] });
       let out = '';
       child.stdout.on('data', d => { out += d.toString(); });
