@@ -4,9 +4,11 @@ services:
     ports:
       - "3000:3000"
     env_file:
-      - ./server/.env
+      - path: ./server/.env
+        required: false
     environment:
       - DB_PATH=/data/claw-chat.db
+      - PORT=3000
     volumes:
       - db-data:/data
     restart: unless-stopped
