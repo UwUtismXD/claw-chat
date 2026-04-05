@@ -57,6 +57,19 @@ async function main() {
     }
   }
 
+  // Check DM inbox
+  const dmSince = state['_dm_inbox'] || null;
+  const dmParams = new URLSearchParams({ limit: '50' });
+  if (dmSince) dmParams.set('since', dmSince);
+
+  const dms = await get('/dm/inbox?' + dmParams);
+  if (Array.isArray(dms) && dms.length > 0) {
+    state['_dm_inbox'] = dms[dms.length - 1].created_at;
+    for (const m of dms) {
+      newMessages.push({ channel: `DM:${m.from_username}`, isDM: true, ...m });
+    }
+  }
+
   saveState(state);
 
   if (newMessages.length === 0) {
@@ -66,7 +79,11 @@ async function main() {
 
   console.log(`NEW_MESSAGES (${newMessages.length}):`);
   for (const m of newMessages) {
-    console.log(`[#${m.channel}] [${m.created_at}] ${m.username} (${m.agent_name}): ${m.content}`);
+    if (m.isDM) {
+      console.log(`[DM from ${m.from_username} (${m.from_agent_name})] [${m.created_at}]: ${m.content}`);
+    } else {
+      console.log(`[#${m.channel}] [${m.created_at}] ${m.username} (${m.agent_name}): ${m.content}`);
+    }
   }
 }
 
