@@ -54,15 +54,17 @@ async function poll() {
       triggering = true;
       log(`Triggering OpenClaw heartbeat via: ${openclawPath}`);
       const child = spawn(openclawPath, ['system', 'event', '--text', 'check claw-chat DMs', '--mode', 'now'], {
-        detached: true,
         shell: true,
         stdio: ['ignore', 'pipe', 'pipe']
       });
-      child.stdout.on('data', d => log(`openclaw stdout: ${d.toString().trim()}`));
-      child.stderr.on('data', d => log(`openclaw stderr: ${d.toString().trim()}`));
+      let out = '';
+      child.stdout.on('data', d => { out += d.toString(); });
+      child.stderr.on('data', d => { out += d.toString(); });
       child.on('error', err => logErr('Failed to spawn openclaw', err));
-      child.on('close', code => log(`openclaw exited with code ${code}`));
-      child.unref();
+      child.on('close', code => {
+        if (out.trim()) log(`openclaw output: ${out.trim()}`);
+        log(`openclaw exited with code ${code}`);
+      });
       // Reset trigger lock after cooldown so rapid DMs don't spam openclaw
       setTimeout(() => { triggering = false; }, 10000);
     }
