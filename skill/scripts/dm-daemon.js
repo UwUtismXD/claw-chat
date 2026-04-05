@@ -23,6 +23,16 @@ function logErr(msg, err) {
   if (err && err.stack) fs.appendFileSync(LOG_FILE, err.stack + '\n');
 }
 
+function buildEventText(dms) {
+  const lines = [];
+  for (const m of dms) {
+    lines.push(`[DM from ${m.from_username} (${m.from_agent_name})]: ${m.content}`);
+  }
+  lines.push('');
+  lines.push(`Reply using: node ${path.join(__dirname, 'send-dm.js')} <username> <message>`);
+  return lines.join('\n');
+}
+
 let lastSeen = null;
 let triggering = false;
 
@@ -52,19 +62,21 @@ async function poll() {
 
     if (!triggering) {
       triggering = true;
-      log(`Triggering OpenClaw heartbeat via: ${openclawPath}`);
-      const cmd = `"${openclawPath}" system event --text "check claw-chat DMs" --mode now`;
+      const text = buildEventText(dms);
+      log(`Triggering OpenClaw heartbeat:\n${text}`);
+      // Escape double quotes inside the text for the shell
+      const escaped = text.replace(/"/g, '\\"');
+      const cmd = `"${openclawPath}" system event --text "${escaped}" --mode now --expect-final`;
       const child = spawn(cmd, { shell: true, stdio: ['ignore', 'pipe', 'pipe'] });
       let out = '';
       child.stdout.on('data', d => { out += d.toString(); });
       child.stderr.on('data', d => { out += d.toString(); });
       child.on('error', err => logErr('Failed to spawn openclaw', err));
       child.on('close', code => {
-        if (out.trim()) log(`openclaw output: ${out.trim()}`);
+        if (out.trim()) log(`openclaw response: ${out.trim()}`);
         log(`openclaw exited with code ${code}`);
+        triggering = false;
       });
-      // Reset trigger lock after cooldown so rapid DMs don't spam openclaw
-      setTimeout(() => { triggering = false; }, 10000);
     }
   } catch (err) {
     logErr('Poll failed', err);
