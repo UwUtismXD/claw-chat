@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// Long-running daemon that polls for incoming DMs and triggers an OpenClaw heartbeat.
+// Long-running daemon that polls for incoming DMs and triggers an OpenClaw agent turn.
 // Usage: node dm-daemon.js [poll-interval-seconds]
 
-const { spawn } = require('child_process');
+const { execSync, spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const { url, apiKey, openclawPath } = require('./_config');
@@ -10,6 +10,22 @@ const { url, apiKey, openclawPath } = require('./_config');
 const POLL_MS    = (parseInt(process.argv[2]) || 5) * 1000;
 const LOG_FILE   = path.join(__dirname, 'dm-daemon.log');
 const STATE_FILE = path.join(__dirname, 'dm-daemon-state.json');
+
+// Resolve the full path to openclaw so spawn works without shell:true
+function resolveOpenclawPath() {
+  if (openclawPath !== 'openclaw') return openclawPath; // user gave a full path
+  try {
+    const resolved = execSync('where openclaw', { encoding: 'utf8' }).trim().split(/\r?\n/)[0];
+    if (resolved) return resolved;
+  } catch {}
+  try {
+    const resolved = execSync('which openclaw', { encoding: 'utf8' }).trim();
+    if (resolved) return resolved;
+  } catch {}
+  return openclawPath; // fallback, may ENOENT
+}
+
+const resolvedOC = resolveOpenclawPath();
 
 function loadLastSeen() {
   try {
@@ -36,18 +52,18 @@ function logErr(msg, err) {
   if (err && err.stack) fs.appendFileSync(LOG_FILE, err.stack + '\n');
 }
 
-function buildEventText(dms) {
-  const sendDm = `node ${path.join(__dirname, 'send-dm.js')}`;
+function buildMessage(dms) {
+  const sendDm = path.join(__dirname, 'send-dm.js');
   const lines = [];
   lines.push('You have received new claw-chat direct messages. You MUST reply to each one.');
   lines.push('');
   for (const m of dms) {
     lines.push(`From: ${m.from_username} (${m.from_agent_name})`);
     lines.push(`Message: ${m.content}`);
-    lines.push(`Reply command: ${sendDm} ${m.from_username} "your reply here"`);
+    lines.push(`To reply, run: node ${sendDm} ${m.from_username} "your reply here"`);
     lines.push('');
   }
-  lines.push('Do not skip this. Reply to every message above using the reply commands provided.');
+  lines.push('Run the reply commands above now. Do not skip any.');
   return lines.join('\n');
 }
 
@@ -80,12 +96,12 @@ async function poll() {
 
     if (!triggering) {
       triggering = true;
-      const text = buildEventText(dms);
-      log(`Triggering OpenClaw heartbeat:\n${text}`);
+      const text = buildMessage(dms);
+      log(`Triggering OpenClaw agent turn:\n${text}`);
 
-      // Pass args as array — no shell, no quoting issues, newlines preserved
-      const args = ['system', 'event', '--text', text, '--mode', 'now', '--expect-final'];
-      const child = spawn(openclawPath, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+      // Use 'agent --message' for a direct agent turn (not a heartbeat)
+      const args = ['agent', '--message', text, '--json'];
+      const child = spawn(resolvedOC, args, { stdio: ['ignore', 'pipe', 'pipe'] });
       let out = '';
       child.stdout.on('data', d => { out += d.toString(); });
       child.stderr.on('data', d => { out += d.toString(); });
@@ -102,7 +118,7 @@ async function poll() {
 }
 
 log(`claw-chat DM daemon started (polling every ${POLL_MS / 1000}s)`);
-log(`Config: url=${url} key=${apiKey.slice(0, 8)}... openclaw=${openclawPath}`);
+log(`Config: url=${url} key=${apiKey.slice(0, 8)}... openclaw=${resolvedOC}`);
 log(`Log file: ${LOG_FILE}`);
 poll();
 setInterval(poll, POLL_MS);
