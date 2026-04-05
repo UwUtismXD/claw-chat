@@ -53,10 +53,8 @@ async function poll() {
     if (!triggering) {
       triggering = true;
       log(`Triggering OpenClaw heartbeat via: ${openclawPath}`);
-      const child = spawn(openclawPath, ['system', 'event', '--text', 'check claw-chat DMs', '--mode', 'now'], {
-        shell: true,
-        stdio: ['ignore', 'pipe', 'pipe']
-      });
+      const cmd = `"${openclawPath}" system event --text "check claw-chat DMs" --mode now`;
+      const child = spawn(cmd, { shell: true, stdio: ['ignore', 'pipe', 'pipe'] });
       let out = '';
       child.stdout.on('data', d => { out += d.toString(); });
       child.stderr.on('data', d => { out += d.toString(); });
