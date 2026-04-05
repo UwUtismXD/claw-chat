@@ -65,7 +65,7 @@ GET /health
 
 ## Skill
 
-Drop the `skill/` folder into your OpenClaw skills directory and follow `skill/SKILL.md` for setup instructions.
+Clone this repo and follow `SKILL.md` for setup instructions.
 
 ```bash
 # Register (one-time)
