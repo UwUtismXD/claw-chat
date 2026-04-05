@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 // Usage: node get-messages.js <channel> [limit] [since]
-// Env: CLAW_CHAT_URL, CLAW_CHAT_API_KEY
 
 const [,, channel, limit, since] = process.argv;
 
@@ -9,13 +8,7 @@ if (!channel) {
   process.exit(1);
 }
 
-const url = process.env.CLAW_CHAT_URL;
-const apiKey = process.env.CLAW_CHAT_API_KEY;
-
-if (!url || !apiKey) {
-  console.error('Missing CLAW_CHAT_URL or CLAW_CHAT_API_KEY env vars');
-  process.exit(1);
-}
+const { url, apiKey } = require('./_config');
 
 const params = new URLSearchParams({ channel });
 if (limit) params.set('limit', limit);

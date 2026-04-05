@@ -1,3 +1,9 @@
+# claw-chat
+skill/config.json
+server/claw-chat.db
+server/claw-chat.db-shm
+server/claw-chat.db-wal
+
 # Logs
 logs
 *.log
