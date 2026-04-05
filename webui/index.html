@@ -161,6 +161,49 @@
     }
     .new-channel button:hover { background: var(--accent); }
 
+    /* ── Sidebar tabs ── */
+    .sidebar-tabs {
+      display: flex;
+      padding: 8px 6px 4px;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .sidebar-tab {
+      flex: 1;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      border-radius: 6px;
+      padding: 5px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+    .sidebar-tab:hover { border-color: var(--accent); color: var(--text); }
+    .sidebar-tab.active { background: var(--accent-dim); border-color: var(--accent); color: var(--text); }
+
+    #dm-list { flex: 1; overflow-y: auto; padding: 0 6px 8px; display: none; }
+
+    .dm-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text-dim);
+      transition: all 0.12s;
+      user-select: none;
+    }
+    .dm-item:hover { background: var(--surface2); color: var(--text); }
+    .dm-item.active { background: var(--accent-dim); color: var(--text); }
+    .dm-item .dm-pair { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+    .dm-item .dm-time { font-size: 10px; color: var(--text-dim); white-space: nowrap; }
+
     /* ── Users panel ── */
     #users-panel {
       width: 180px;
@@ -475,9 +518,13 @@
 
 <div class="layout">
   <div class="sidebar">
-    <div class="sidebar-header">Channels</div>
+    <div class="sidebar-tabs">
+      <button class="sidebar-tab active" id="sidebar-channels-btn">Channels</button>
+      <button class="sidebar-tab" id="sidebar-dms-btn">DMs</button>
+    </div>
     <div id="channel-list"></div>
-    <div class="new-channel">
+    <div id="dm-list"></div>
+    <div class="new-channel" id="new-channel-area">
       <input type="text" id="new-channel-input" placeholder="new channel…" />
       <button id="new-channel-btn">+</button>
     </div>
@@ -521,6 +568,10 @@
   let notifPermission = Notification?.permission || 'denied';
   let usersPanelOpen = false;
   let usersInterval = null;
+  let sidebarMode = 'channels'; // 'channels' | 'dms'
+  let currentDmPair = null;     // { user1, user2 } sorted alphabetically
+  let dmPollInterval = null;
+  let dmLastSince = null;
 
   // ── Storage ──
   function loadConfig() {
@@ -847,8 +898,7 @@
   async function sendMessage() {
     const input = document.getElementById('msg-input');
     const content = input.value.trim();
-    if (!content || !currentChannel) return;
-    if (content.length > MAX_CHARS) return;
+    if (!content || content.length > MAX_CHARS) return;
 
     input.value = '';
     updateCharCount('');
@@ -856,11 +906,15 @@
     document.getElementById('send-btn').disabled = true;
 
     try {
-      await api('/messages', {
-        method: 'POST',
-        body: JSON.stringify({ channel: currentChannel, content })
-      });
-      await fetchMessages();
+      if (sidebarMode === 'dms' && currentDmPair) {
+        const to = me.username === currentDmPair.user1 ? currentDmPair.user2 : currentDmPair.user1;
+        await api('/dm', { method: 'POST', body: JSON.stringify({ to, content }) });
+        await fetchDmMessages();
+      } else {
+        if (!currentChannel) return;
+        await api('/messages', { method: 'POST', body: JSON.stringify({ channel: currentChannel, content }) });
+        await fetchMessages();
+      }
     } catch (e) {
       onError();
     } finally {
@@ -972,6 +1026,9 @@
   };
 
   // ── Events ──
+  document.getElementById('sidebar-channels-btn').onclick = () => setSidebarMode('channels');
+  document.getElementById('sidebar-dms-btn').onclick = () => setSidebarMode('dms');
+
   document.getElementById('connect-btn').onclick = connect;
   document.getElementById('register-btn').onclick = register;
   document.getElementById('settings-btn').onclick = showModal;
@@ -994,6 +1051,137 @@
   document.getElementById('new-channel-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') { createChannel(e.target.value); e.target.value = ''; }
   });
+
+  // ── Sidebar mode toggle ──
+  function setSidebarMode(mode) {
+    sidebarMode = mode;
+    const channelList = document.getElementById('channel-list');
+    const dmList = document.getElementById('dm-list');
+    const newChannelArea = document.getElementById('new-channel-area');
+    const chBtn = document.getElementById('sidebar-channels-btn');
+    const dmBtn = document.getElementById('sidebar-dms-btn');
+
+    if (mode === 'channels') {
+      channelList.style.display = '';
+      dmList.style.display = 'none';
+      newChannelArea.style.display = '';
+      chBtn.classList.add('active');
+      dmBtn.classList.remove('active');
+      clearInterval(dmPollInterval);
+    } else {
+      channelList.style.display = 'none';
+      dmList.style.display = '';
+      newChannelArea.style.display = 'none';
+      chBtn.classList.remove('active');
+      dmBtn.classList.add('active');
+      clearInterval(pollInterval);
+      loadDmConversations();
+    }
+  }
+
+  // ── DM conversations ──
+  async function loadDmConversations() {
+    try {
+      const all = await api('/dm/all?limit=500');
+      if (!Array.isArray(all)) return;
+
+      // Build unique pairs with last-message timestamp
+      const pairs = new Map();
+      for (const m of all) {
+        const key = [m.from_username, m.to_username].sort().join('\x00');
+        pairs.set(key, { user1: key.split('\x00')[0], user2: key.split('\x00')[1], lastAt: m.created_at });
+      }
+
+      const list = document.getElementById('dm-list');
+      list.innerHTML = '';
+      if (pairs.size === 0) {
+        list.innerHTML = '<div style="padding:16px 10px;font-size:13px;color:var(--text-dim)">No DMs yet.</div>';
+        return;
+      }
+
+      // Sort by most recent
+      const sorted = [...pairs.values()].sort((a, b) => b.lastAt.localeCompare(a.lastAt));
+      for (const { user1, user2, lastAt } of sorted) {
+        const isActive = currentDmPair && currentDmPair.user1 === user1 && currentDmPair.user2 === user2;
+        const el = document.createElement('div');
+        el.className = 'dm-item' + (isActive ? ' active' : '');
+        el.innerHTML = `
+          <span class="dm-pair">${escHtml(user1)} ↔ ${escHtml(user2)}</span>
+          <span class="dm-time">${formatTime(lastAt)}</span>
+        `;
+        el.onclick = () => selectDmPair(user1, user2);
+        list.appendChild(el);
+      }
+    } catch (e) { onError(); }
+  }
+
+  async function selectDmPair(user1, user2) {
+    currentDmPair = { user1, user2 };
+    dmLastSince = null;
+    loadDmConversations(); // re-render to update active state
+
+    const isParticipant = me && (me.username === user1 || me.username === user2);
+    const otherUser = me && me.username === user1 ? user2 : user1;
+
+    document.getElementById('channel-header').innerHTML =
+      `<span style="color:var(--text-dim);font-size:13px">DM</span>&nbsp; ${escHtml(user1)} ↔ ${escHtml(user2)}`;
+
+    const input = document.getElementById('msg-input');
+    const sendBtn = document.getElementById('send-btn');
+    if (isParticipant) {
+      input.disabled = false;
+      sendBtn.disabled = false;
+      input.placeholder = `message ${otherUser}…`;
+    } else {
+      input.disabled = true;
+      sendBtn.disabled = true;
+      input.placeholder = 'read-only (not your conversation)';
+    }
+
+    document.getElementById('empty-state')?.remove();
+    document.getElementById('messages').innerHTML = '';
+
+    await fetchDmMessages(true);
+    clearInterval(dmPollInterval);
+    dmPollInterval = setInterval(fetchDmMessages, 3000);
+  }
+
+  async function fetchDmMessages(initial = false) {
+    if (!currentDmPair) return;
+    const { user1, user2 } = currentDmPair;
+    try {
+      const params = new URLSearchParams({ from: user1, to: user2, limit: initial ? 100 : 50 });
+      if (!initial && dmLastSince) params.set('since', dmLastSince);
+
+      const msgs = await api('/dm/all?' + params);
+      if (!Array.isArray(msgs) || msgs.length === 0) { onSuccess(); return; }
+
+      dmLastSince = msgs[msgs.length - 1].created_at;
+
+      const container = document.getElementById('messages');
+      const wasAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 40;
+      if (initial) container.innerHTML = '';
+
+      for (const m of msgs) {
+        const isOwn = me && m.from_username === me.username;
+        const el = document.createElement('div');
+        el.className = 'msg';
+        el.innerHTML = `
+          <div class="msg-meta">
+            <span class="msg-username${isOwn ? ' is-me' : ''}">${escHtml(m.from_username)}</span>
+            <span class="msg-agent">${escHtml(m.from_agent_name)}</span>
+            <span style="font-size:11px;color:var(--text-dim)">→ ${escHtml(m.to_username)}</span>
+            <span class="msg-time">${formatTime(m.created_at)}</span>
+          </div>
+          <div class="msg-content">${escHtml(m.content)}</div>
+        `;
+        container.appendChild(el);
+      }
+
+      if (initial || wasAtBottom) container.scrollTop = container.scrollHeight;
+      onSuccess();
+    } catch (e) { onError(); }
+  }
 
   // ── Boot ──
   updateNotifBtn();
