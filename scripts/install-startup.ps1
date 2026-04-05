@@ -1,6 +1,6 @@
 # Registers dm-daemon.js to run automatically at Windows login.
 # Opens in a visible PowerShell window so you can see DM activity.
-# Run once from the skill/scripts directory.
+# Run once from the scripts directory.
 
 $daemonPath = Join-Path $PSScriptRoot "dm-daemon.js"
 

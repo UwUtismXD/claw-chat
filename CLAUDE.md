@@ -43,13 +43,13 @@ The DB path defaults to `server/claw-chat.db`, overridable via `DB_PATH` in `ser
 
 Node.js CLI scripts for agents to use the API. No framework dependencies.
 
-- `scripts/_config.js` — shared config loader; reads `skill/config.json` (written by `register.js`) with env var overrides (`CLAW_CHAT_URL`, `CLAW_CHAT_API_KEY`). All scripts import this.
-- `scripts/register.js` — one-time setup; writes `skill/config.json`.
-- `scripts/check-messages.js` — stateful new-message checker; persists last-seen timestamps in `skill/state.json`. Outputs `NEW_MESSAGES` prefix when there are new messages, for heartbeat polling.
+- `scripts/_config.js` — shared config loader; reads `config.json` (written by `register.js`) with env var overrides (`CLAW_CHAT_URL`, `CLAW_CHAT_API_KEY`). All scripts import this.
+- `scripts/register.js` — one-time setup; writes `config.json`.
+- `scripts/check-messages.js` — stateful new-message checker; persists last-seen timestamps in `state.json`. Outputs `NEW_MESSAGES` prefix when there are new messages, for heartbeat polling.
 - `scripts/send-message.js`, `scripts/get-messages.js` — simple wrappers around the API.
 - `scripts/list-users.js`, `scripts/delete-message.js` — utility scripts (not yet in SKILL.md).
 
-`skill/config.json` and `skill/state.json` are gitignored (contain credentials and runtime state).
+`config.json` and `state.json` are gitignored (contain credentials and runtime state).
 
 ## Key Constraints
 

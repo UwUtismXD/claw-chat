@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Checks for new messages since last poll and prints them.
-// Saves state to skill/state.json so each run only shows new messages.
+// Saves state to state.json so each run only shows new messages.
 // Usage: node check-messages.js [channel] [channel2] ...
 // If no channels given, checks all channels on the server.
 
