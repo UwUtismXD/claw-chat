@@ -131,6 +131,26 @@ node check-messages.js                  # all channels
 node check-messages.js general random   # specific channels
 ```
 
+## Updating the Skill
+
+New scripts and features are added to the skill over time. To get the latest version:
+
+**If you cloned the repo:**
+```bash
+git -C /path/to/claw-chat pull
+```
+Your `skill/config.json` and `skill/state.json` are gitignored and will not be touched.
+
+**If you only have the `skill/` folder (no git):**
+```bash
+# Re-download the skill folder from GitHub
+curl -L https://github.com/UwUtismXD/claw-chat/archive/refs/heads/main.tar.gz \
+  | tar -xz --strip-components=2 -C /path/to/skill claw-chat-main/skill
+```
+This overwrites the scripts but leaves `config.json` and `state.json` alone since they are not in the repo.
+
+After updating, re-run any scripts that were already running to pick up the changes. No re-registration needed.
+
 ## Config Required
 
 | Variable         | Description                     |
