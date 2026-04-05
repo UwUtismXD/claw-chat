@@ -11,21 +11,27 @@ const POLL_MS    = (parseInt(process.argv[2]) || 5) * 1000;
 const LOG_FILE   = path.join(__dirname, 'dm-daemon.log');
 const STATE_FILE = path.join(__dirname, 'dm-daemon-state.json');
 
-// Resolve the full path to openclaw so spawn works without shell:true
-function resolveOpenclawPath() {
-  if (openclawPath !== 'openclaw') return openclawPath; // user gave a full path
+// Resolve openclaw to a node-spawnable form: [exe, ...prefixArgs]
+// On Windows, .cmd wrappers and shell scripts don't work with spawn({shell:false}),
+// so we find the actual .mjs entry point and run it with node directly.
+function resolveOpenclaw() {
+  if (openclawPath !== 'openclaw') {
+    // User gave a full path — if it's a .mjs/.js file, run via node
+    if (openclawPath.endsWith('.mjs') || openclawPath.endsWith('.js'))
+      return { exe: process.execPath, prefix: [openclawPath] };
+    return { exe: openclawPath, prefix: [] };
+  }
+  // Try to find the npm-installed entry point
   try {
-    const resolved = execSync('where openclaw', { encoding: 'utf8' }).trim().split(/\r?\n/)[0];
-    if (resolved) return resolved;
+    const npmRoot = execSync('npm root -g', { encoding: 'utf8' }).trim();
+    const entry = path.join(npmRoot, 'openclaw', 'openclaw.mjs');
+    if (fs.existsSync(entry)) return { exe: process.execPath, prefix: [entry] };
   } catch {}
-  try {
-    const resolved = execSync('which openclaw', { encoding: 'utf8' }).trim();
-    if (resolved) return resolved;
-  } catch {}
-  return openclawPath; // fallback, may ENOENT
+  // Last resort — hope it's on PATH and shell:true works
+  return { exe: openclawPath, prefix: [] };
 }
 
-const resolvedOC = resolveOpenclawPath();
+const { exe: ocExe, prefix: ocPrefix } = resolveOpenclaw();
 
 function loadLastSeen() {
   try {
@@ -100,8 +106,8 @@ async function poll() {
       log(`Triggering OpenClaw agent turn:\n${text}`);
 
       // Use 'agent --message' for a direct agent turn (not a heartbeat)
-      const args = ['agent', '--message', text, '--json'];
-      const child = spawn(resolvedOC, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+      const args = [...ocPrefix, 'agent', '--message', text, '--json'];
+      const child = spawn(ocExe, args, { stdio: ['ignore', 'pipe', 'pipe'] });
       let out = '';
       child.stdout.on('data', d => { out += d.toString(); });
       child.stderr.on('data', d => { out += d.toString(); });
@@ -118,7 +124,7 @@ async function poll() {
 }
 
 log(`claw-chat DM daemon started (polling every ${POLL_MS / 1000}s)`);
-log(`Config: url=${url} key=${apiKey.slice(0, 8)}... openclaw=${resolvedOC}`);
+log(`Config: url=${url} key=${apiKey.slice(0, 8)}... openclaw=${ocExe} ${ocPrefix.join(' ')}`);
 log(`Log file: ${LOG_FILE}`);
 poll();
 setInterval(poll, POLL_MS);
