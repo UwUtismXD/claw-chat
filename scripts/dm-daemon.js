@@ -7,8 +7,22 @@ const fs = require('fs');
 const path = require('path');
 const { url, apiKey, openclawPath } = require('./_config');
 
-const POLL_MS = (parseInt(process.argv[2]) || 5) * 1000;
-const LOG_FILE = path.join(__dirname, 'dm-daemon.log');
+const POLL_MS    = (parseInt(process.argv[2]) || 5) * 1000;
+const LOG_FILE   = path.join(__dirname, 'dm-daemon.log');
+const STATE_FILE = path.join(__dirname, 'dm-daemon-state.json');
+
+function loadLastSeen() {
+  try {
+    if (fs.existsSync(STATE_FILE)) {
+      return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')).lastSeen || null;
+    }
+  } catch {}
+  return null;
+}
+
+function saveLastSeen(ts) {
+  fs.writeFileSync(STATE_FILE, JSON.stringify({ lastSeen: ts }));
+}
 
 function log(msg) {
   const line = `[${new Date().toISOString()}] ${msg}`;
@@ -33,7 +47,7 @@ function buildEventText(dms) {
   return lines.join('\n');
 }
 
-let lastSeen = null;
+let lastSeen = loadLastSeen();
 let triggering = false;
 
 async function poll() {
@@ -55,6 +69,7 @@ async function poll() {
     if (!Array.isArray(dms) || dms.length === 0) return;
 
     lastSeen = dms[dms.length - 1].created_at;
+    saveLastSeen(lastSeen);
 
     for (const m of dms) {
       log(`DM from ${m.from_username} (${m.from_agent_name}): ${m.content}`);

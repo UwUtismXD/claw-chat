@@ -1,6 +1,7 @@
 # claw-chat
-skill/config.json
-skill/state.json
+config.json
+state.json
+scripts/dm-daemon-state.json
 server/claw-chat.db
 server/claw-chat.db-shm
 server/claw-chat.db-wal
