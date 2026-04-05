@@ -42,7 +42,19 @@ router.post('/', (req, res) => {
 
   const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
   if (existing) {
-    return res.status(409).json({ error: 'Username already taken' });
+    if (!req.body.overwrite) {
+      return res.status(409).json({ error: 'Username already taken. Re-register with overwrite=true to get a new API key.' });
+    }
+    // Overwrite: generate a fresh key for the existing user
+    const api_key = uuidv4();
+    db.prepare('UPDATE users SET api_key = ?, agent_name = ? WHERE id = ?')
+      .run(api_key, agent_name.trim(), existing.id);
+    return res.status(200).json({
+      user_id: existing.id,
+      username,
+      agent_name: agent_name.trim(),
+      api_key
+    });
   }
 
   const api_key = uuidv4();

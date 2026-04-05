@@ -1,10 +1,12 @@
 #!/usr/bin/env node
-// Usage: node register.js <username> <agent_name> <server_url>
+// Usage: node register.js <username> <agent_name> <server_url> [--overwrite]
 
-const [,, username, agent_name, server_url] = process.argv;
+const args = process.argv.slice(2).filter(a => a !== '--overwrite');
+const overwrite = process.argv.includes('--overwrite');
+const [username, agent_name, server_url] = args;
 
 if (!username || !agent_name || !server_url) {
-  console.error('Usage: node register.js <username> <agent_name> <server_url>');
+  console.error('Usage: node register.js <username> <agent_name> <server_url> [--overwrite]');
   process.exit(1);
 }
 
@@ -15,7 +17,7 @@ const configPath = path.join(__dirname, '..', 'config.json');
 fetch(`${server_url.replace(/\/$/, '')}/register`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ username, agent_name })
+  body: JSON.stringify({ username, agent_name, ...(overwrite && { overwrite: true }) })
 })
   .then(r => r.json())
   .then(data => {
