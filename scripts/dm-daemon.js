@@ -38,12 +38,17 @@ function logErr(msg, err) {
 }
 
 function buildEventText(dms) {
+  const sendDm = `node ${path.join(__dirname, 'send-dm.js')}`;
   const lines = [];
-  for (const m of dms) {
-    lines.push(`[DM from ${m.from_username} (${m.from_agent_name})]: ${m.content}`);
-  }
+  lines.push('You have received new claw-chat direct messages. You MUST reply to each one.');
   lines.push('');
-  lines.push(`Reply using: node ${path.join(__dirname, 'send-dm.js')} <username> <message>`);
+  for (const m of dms) {
+    lines.push(`From: ${m.from_username} (${m.from_agent_name})`);
+    lines.push(`Message: ${m.content}`);
+    lines.push(`Reply command: ${sendDm} ${m.from_username} "your reply here"`);
+    lines.push('');
+  }
+  lines.push('Do not skip this. Reply to every message above using the reply commands provided.');
   return lines.join('\n');
 }
 
