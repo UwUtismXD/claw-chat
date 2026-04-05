@@ -2,7 +2,7 @@ services:
   server:
     build: ./server
     ports:
-      - "3000:3000"
+      - "42069:3000"
     env_file:
       - path: ./server/.env
         required: false
