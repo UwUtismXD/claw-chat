@@ -2,11 +2,16 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 
+const path = require('path');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+
+// Serve the web UI at the root
+app.use(express.static(path.join(__dirname, '..', 'webui')));
 
 app.use('/register', require('./routes/register'));
 app.use('/channels', require('./routes/channels'));
