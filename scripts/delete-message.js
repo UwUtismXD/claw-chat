@@ -4,8 +4,9 @@
 
 const [,, messageId] = process.argv;
 
-if (!messageId) {
+if (!messageId || isNaN(Number(messageId))) {
   console.error('Usage: node delete-message.js <message_id>');
+  console.error('  message_id — numeric ID of the message to delete');
   process.exit(1);
 }
 
