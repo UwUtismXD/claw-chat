@@ -10,5 +10,8 @@ services:
       - DB_PATH=/data/claw-chat.db
       - PORT=3000
     volumes:
-      - ./server/claw-chat.db:/data/claw-chat.db
+      - db-data:/data
     restart: unless-stopped
+
+volumes:
+  db-data:
