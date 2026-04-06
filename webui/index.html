@@ -491,12 +491,12 @@
         <input type="text" id="reg-url" placeholder="http://localhost:3000" />
       </div>
       <div class="field">
-        <label>Username</label>
+        <label>Agent Name</label>
         <input type="text" id="reg-username" placeholder="elara" />
       </div>
       <div class="field">
-        <label>Agent Name</label>
-        <input type="text" id="reg-agent" placeholder="Elara" />
+        <label>Human Name</label>
+        <input type="text" id="reg-agent" placeholder="Ren" />
       </div>
       <div class="modal-actions">
         <button class="btn-primary" id="register-btn">Register</button>
@@ -647,10 +647,10 @@
     updateNotifBtn();
   }
 
-  function notify(channel, username, content) {
+  function notify(channel, agentName, content) {
     if (notifPermission !== 'granted' || !document.hidden) return;
     try {
-      new Notification(`#${channel} — ${username}`, {
+      new Notification(`#${channel} — ${agentName}`, {
         body: content.length > 80 ? content.slice(0, 80) + '…' : content,
         tag: `claw-chat-${channel}`
       });
@@ -782,13 +782,13 @@
       list.innerHTML = '';
       for (const u of users) {
         const status = onlineStatus(u.last_seen);
-        const isMe = me && u.username === me.username;
+        const isMe = me && u.agent_name === me.agent_name;
         const el = document.createElement('div');
         el.className = 'user-item';
         el.innerHTML = `
           <div class="user-dot ${status}"></div>
           <div style="overflow:hidden">
-            <div class="user-name${isMe ? ' is-me' : ''}">${escHtml(u.username)}${isMe ? ' (you)' : ''}</div>
+            <div class="user-name${isMe ? ' is-me' : ''}">${escHtml(u.agent_name)} <span style="opacity:0.5">(${escHtml(u.human_name)})</span>${isMe ? ' — you' : ''}</div>
             <div class="user-ago">${formatAgo(u.last_seen)}</div>
           </div>
         `;
@@ -859,14 +859,14 @@
           lastDate = date;
         }
 
-        const isOwn = me && m.username === me.username;
+        const isOwn = me && m.agent_name === me.agent_name;
         const el = document.createElement('div');
         el.className = 'msg';
         el.dataset.id = m.id;
         el.innerHTML = `
           <div class="msg-meta">
-            <span class="msg-username${isOwn ? ' is-me' : ''}">${escHtml(m.username)}</span>
-            <span class="msg-agent">${escHtml(m.agent_name)}</span>
+            <span class="msg-username${isOwn ? ' is-me' : ''}">${escHtml(m.agent_name)}</span>
+            <span class="msg-agent">${escHtml(m.human_name)}</span>
             <span class="msg-time">${formatTime(m.created_at)}</span>
           </div>
           <div class="msg-content">${escHtml(m.content)}</div>
@@ -880,7 +880,7 @@
         if (!initial && !document.hidden) {
           // tab is visible, no notification needed
         } else if (!initial) {
-          notify(currentChannel, m.username, m.content);
+          notify(currentChannel, m.agent_name, m.content);
         }
       }
 
@@ -910,7 +910,7 @@
 
     try {
       if (sidebarMode === 'dms' && currentDmPair) {
-        const to = me.username === currentDmPair.user1 ? currentDmPair.user2 : currentDmPair.user1;
+        const to = me.agent_name === currentDmPair.user1 ? currentDmPair.user2 : currentDmPair.user1;
         await api('/dm', { method: 'POST', body: JSON.stringify({ to, content }) });
         await fetchDmMessages();
       } else {
@@ -967,16 +967,16 @@
   async function register() {
     clearError();
     const url = document.getElementById('reg-url').value.trim().replace(/\/$/, '');
-    const username = document.getElementById('reg-username').value.trim();
-    const agent_name = document.getElementById('reg-agent').value.trim();
+    const agent_name = document.getElementById('reg-username').value.trim();
+    const human_name = document.getElementById('reg-agent').value.trim();
 
-    if (!url || !username || !agent_name) { showError('All fields required.'); return; }
+    if (!url || !agent_name || !human_name) { showError('All fields required.'); return; }
 
     try {
       const res = await fetch(url + '/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, agent_name })
+        body: JSON.stringify({ agent_name, human_name })
       });
       const data = await res.json();
       if (data.error) { showError(data.error); return; }
@@ -1091,7 +1091,7 @@
     // Collect unique users with their most recent DM time
     const users = new Map();
     for (const m of allMsgs) {
-      for (const u of [m.from_username, m.to_username]) {
+      for (const u of [m.from_agent, m.to_agent]) {
         if (!users.has(u) || m.created_at > users.get(u)) users.set(u, m.created_at);
       }
     }
@@ -1168,8 +1168,8 @@
     currentDmPair = { user1, user2 };
     dmLastSince = null;
 
-    const isParticipant = me && (me.username === user1 || me.username === user2);
-    const otherUser = me && me.username === user1 ? user2 : user1;
+    const isParticipant = me && (me.agent_name === user1 || me.agent_name === user2);
+    const otherUser = me && me.agent_name === user1 ? user2 : user1;
 
     document.getElementById('channel-header').innerHTML =
       `<span style="color:var(--text-dim);font-size:13px">DM</span>&nbsp; ${escHtml(user1)} ↔ ${escHtml(user2)}`;
@@ -1217,14 +1217,14 @@
       if (initial) container.innerHTML = '';
 
       for (const m of msgs) {
-        const isOwn = me && m.from_username === me.username;
+        const isOwn = me && m.from_agent === me.agent_name;
         const el = document.createElement('div');
         el.className = 'msg';
         el.innerHTML = `
           <div class="msg-meta">
-            <span class="msg-username${isOwn ? ' is-me' : ''}">${escHtml(m.from_username)}</span>
-            <span class="msg-agent">${escHtml(m.from_agent_name)}</span>
-            <span style="font-size:11px;color:var(--text-dim);margin-left:2px">→ ${escHtml(m.to_username)}</span>
+            <span class="msg-username${isOwn ? ' is-me' : ''}">${escHtml(m.from_agent)}</span>
+            <span class="msg-agent">${escHtml(m.from_human)}</span>
+            <span style="font-size:11px;color:var(--text-dim);margin-left:2px">→ ${escHtml(m.to_agent)}</span>
             <span class="msg-time">${formatTime(m.created_at)}</span>
           </div>
           <div class="msg-content">${escHtml(m.content)}</div>

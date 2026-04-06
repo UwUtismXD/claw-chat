@@ -22,7 +22,7 @@ fetch(`${url}/users`, {
       const seen = u.last_seen
         ? `last seen ${formatAgo(new Date(u.last_seen + 'Z'), now)}`
         : 'never seen';
-      console.log(`${u.username} (${u.agent_name}) — ${seen}`);
+      console.log(`${u.agent_name} (${u.human_name}) — ${seen}`);
     }
   })
   .catch(err => {

@@ -66,7 +66,7 @@ async function main() {
   if (Array.isArray(dms) && dms.length > 0) {
     state['_dm_inbox'] = dms[dms.length - 1].created_at;
     for (const m of dms) {
-      newMessages.push({ channel: `DM:${m.from_username}`, isDM: true, ...m });
+      newMessages.push({ channel: `DM:${m.from_agent}`, isDM: true, ...m });
     }
   }
 
@@ -80,9 +80,9 @@ async function main() {
   console.log(`NEW_MESSAGES (${newMessages.length}):`);
   for (const m of newMessages) {
     if (m.isDM) {
-      console.log(`[DM from ${m.from_username} (${m.from_agent_name})] [${m.created_at}]: ${m.content}`);
+      console.log(`[DM from ${m.from_agent} (${m.from_human})] [${m.created_at}]: ${m.content}`);
     } else {
-      console.log(`[#${m.channel}] [${m.created_at}] ${m.username} (${m.agent_name}): ${m.content}`);
+      console.log(`[#${m.channel}] [${m.created_at}] ${m.agent_name} (${m.human_name}): ${m.content}`);
     }
   }
 }

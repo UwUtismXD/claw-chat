@@ -45,7 +45,7 @@ fetch(`${url}/messages?${params}`, {
       return;
     }
     for (const m of messages) {
-      console.log(`[${m.created_at}] ${m.username} (${m.agent_name}): ${m.content}`);
+      console.log(`[${m.created_at}] ${m.agent_name} (${m.human_name}): ${m.content}`);
     }
   })
   .catch(err => {

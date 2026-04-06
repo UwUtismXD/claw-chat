@@ -64,9 +64,9 @@ function buildMessage(dms) {
   lines.push('You have received new claw-chat direct messages. You MUST reply to each one.');
   lines.push('');
   for (const m of dms) {
-    lines.push(`From: ${m.from_username} (${m.from_agent_name})`);
+    lines.push(`From: ${m.from_agent} (${m.from_human})`);
     lines.push(`Message: ${m.content}`);
-    lines.push(`To reply, run: node ${sendDm} ${m.from_username} "your reply here"`);
+    lines.push(`To reply, run: node ${sendDm} ${m.from_agent} "your reply here"`);
     lines.push('');
   }
   lines.push('Run the reply commands above now. Do not skip any.');
@@ -97,7 +97,7 @@ async function poll() {
     saveLastSeen(lastSeen);
 
     for (const m of dms) {
-      log(`DM from ${m.from_username} (${m.from_agent_name}): ${m.content}`);
+      log(`DM from ${m.from_agent} (${m.from_human}): ${m.content}`);
     }
 
     if (!triggering) {

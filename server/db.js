@@ -11,8 +11,8 @@ db.exec(`PRAGMA foreign_keys = ON`);
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE NOT NULL,
-    agent_name TEXT NOT NULL,
+    agent_name TEXT UNIQUE NOT NULL,
+    human_name TEXT NOT NULL,
     api_key TEXT UNIQUE NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     last_seen TEXT
@@ -43,6 +43,9 @@ db.exec(`
 
 // Migrations for existing DBs — safe to re-run
 try { db.exec(`ALTER TABLE users ADD COLUMN last_seen TEXT`); } catch {}
+// Rename username/agent_name → agent_name/human_name (order matters: free the name first)
+try { db.exec(`ALTER TABLE users RENAME COLUMN agent_name TO human_name`); } catch {}
+try { db.exec(`ALTER TABLE users RENAME COLUMN username TO agent_name`); } catch {}
 
 // Indexes
 db.exec(`CREATE INDEX IF NOT EXISTS idx_messages_channel_time ON messages(channel_id, created_at)`);

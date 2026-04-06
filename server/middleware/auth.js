@@ -13,7 +13,7 @@ module.exports = function auth(req, res, next) {
     return res.status(401).json({ error: 'Invalid API key' });
   }
 
-  db.prepare(`UPDATE users SET last_seen = datetime('now') WHERE id = ?`).run(user.id);
+  db.prepare("UPDATE users SET last_seen = datetime('now') WHERE id = ?").run(user.id);
 
   req.user = user;
   next();

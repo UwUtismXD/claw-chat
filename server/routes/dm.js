@@ -14,7 +14,7 @@ router.get('/inbox', auth, (req, res) => {
 
   let query = `
     SELECT dm.id, dm.content, dm.created_at,
-           s.username AS from_username, s.agent_name AS from_agent_name
+           s.agent_name AS from_agent, s.human_name AS from_human
     FROM direct_messages dm
     JOIN users s ON s.id = dm.sender_id
     WHERE dm.recipient_id = ?
@@ -27,13 +27,13 @@ router.get('/inbox', auth, (req, res) => {
   return res.json(db.prepare(query).all(...params));
 });
 
-// GET /dm/thread?with=<username> — full conversation between me and another user
+// GET /dm/thread?with=<agent_name> — full conversation between me and another user
 // Query: ?limit=50&since=<ISO>
 router.get('/thread', auth, (req, res) => {
-  const { with: withUsername, limit = 50, since } = req.query;
-  if (!withUsername) return res.status(400).json({ error: 'with query param is required' });
+  const { with: withAgent, limit = 50, since } = req.query;
+  if (!withAgent) return res.status(400).json({ error: 'with query param is required' });
 
-  const other = db.prepare('SELECT * FROM users WHERE username = ?').get(withUsername);
+  const other = db.prepare('SELECT * FROM users WHERE agent_name = ?').get(withAgent);
   if (!other) return res.status(404).json({ error: 'User not found' });
 
   const maxLimit = Math.min(parseInt(limit) || 50, 200);
@@ -41,8 +41,8 @@ router.get('/thread', auth, (req, res) => {
 
   let query = `
     SELECT dm.id, dm.content, dm.created_at,
-           s.username AS from_username, s.agent_name AS from_agent_name,
-           r.username AS to_username
+           s.agent_name AS from_agent, s.human_name AS from_human,
+           r.agent_name AS to_agent
     FROM direct_messages dm
     JOIN users s ON s.id = dm.sender_id
     JOIN users r ON r.id = dm.recipient_id
@@ -58,9 +58,9 @@ router.get('/thread', auth, (req, res) => {
 });
 
 // POST /dm — send a DM
-// Body: { to: "username", content: "..." }
+// Body: { to: "agent_name", content: "..." }
 // GET /dm/all — all DMs on the server (admin/observer view)
-// Query: ?limit=100&since=<ISO>&from=username&to=username (from+to = bidirectional thread)
+// Query: ?limit=100&since=<ISO>&from=agent_name&to=agent_name (from+to = bidirectional thread)
 router.get('/all', auth, (req, res) => {
   const { limit = 100, since, from: fromUser, to: toUser } = req.query;
   const maxLimit = Math.min(parseInt(limit) || 100, 500);
@@ -68,8 +68,8 @@ router.get('/all', auth, (req, res) => {
 
   let query = `
     SELECT dm.id, dm.content, dm.created_at,
-           s.username AS from_username, s.agent_name AS from_agent_name,
-           r.username AS to_username
+           s.agent_name AS from_agent, s.human_name AS from_human,
+           r.agent_name AS to_agent
     FROM direct_messages dm
     JOIN users s ON s.id = dm.sender_id
     JOIN users r ON r.id = dm.recipient_id
@@ -77,12 +77,12 @@ router.get('/all', auth, (req, res) => {
   `;
 
   if (fromUser && toUser) {
-    query += ` AND ((s.username = ? AND r.username = ?) OR (s.username = ? AND r.username = ?))`;
+    query += ` AND ((s.agent_name = ? AND r.agent_name = ?) OR (s.agent_name = ? AND r.agent_name = ?))`;
     params.push(fromUser, toUser, toUser, fromUser);
   } else if (fromUser) {
-    query += ` AND s.username = ?`; params.push(fromUser);
+    query += ` AND s.agent_name = ?`; params.push(fromUser);
   } else if (toUser) {
-    query += ` AND r.username = ?`; params.push(toUser);
+    query += ` AND r.agent_name = ?`; params.push(toUser);
   }
 
   if (since) { query += ` AND dm.created_at > ?`; params.push(since); }
@@ -109,7 +109,7 @@ router.post('/', auth, (req, res) => {
     });
   }
 
-  const recipient = db.prepare('SELECT * FROM users WHERE username = ?').get(to);
+  const recipient = db.prepare('SELECT * FROM users WHERE agent_name = ?').get(to);
   if (!recipient) return res.status(404).json({ error: 'Recipient not found' });
 
   if (recipient.id === req.user.id) {
@@ -122,8 +122,8 @@ router.post('/', auth, (req, res) => {
 
   const message = db.prepare(`
     SELECT dm.id, dm.content, dm.created_at,
-           s.username AS from_username, s.agent_name AS from_agent_name,
-           r.username AS to_username
+           s.agent_name AS from_agent, s.human_name AS from_human,
+           r.agent_name AS to_agent
     FROM direct_messages dm
     JOIN users s ON s.id = dm.sender_id
     JOIN users r ON r.id = dm.recipient_id

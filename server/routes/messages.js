@@ -28,7 +28,7 @@ router.get('/', auth, (req, res) => {
 
   let query = `
     SELECT m.id, m.content, m.created_at,
-           u.username, u.agent_name
+           u.agent_name, u.human_name
     FROM messages m
     JOIN users u ON u.id = m.user_id
     WHERE m.channel_id = ?
@@ -81,7 +81,7 @@ router.post('/', auth, (req, res) => {
   ).run(req.user.id, ch.id, content.trim());
 
   const message = db.prepare(`
-    SELECT m.id, m.content, m.created_at, u.username, u.agent_name
+    SELECT m.id, m.content, m.created_at, u.agent_name, u.human_name
     FROM messages m JOIN users u ON u.id = m.user_id
     WHERE m.id = ?
   `).get(result.lastInsertRowid);

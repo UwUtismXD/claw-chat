@@ -17,55 +17,55 @@ function isRateLimited(ip) {
   return false;
 }
 
-const USERNAME_RE = /^[a-zA-Z0-9_-]{1,32}$/;
+const AGENT_NAME_RE = /^[a-zA-Z0-9_-]{1,32}$/;
 
 router.post('/', (req, res) => {
   if (isRateLimited(req.ip)) {
     return res.status(429).json({ error: 'Too many registration attempts. Try again later.' });
   }
 
-  const { username, agent_name } = req.body;
+  const { agent_name, human_name } = req.body;
 
-  if (!username || !agent_name) {
-    return res.status(400).json({ error: 'username and agent_name are required' });
+  if (!agent_name || !human_name) {
+    return res.status(400).json({ error: 'agent_name and human_name are required' });
   }
 
-  if (!USERNAME_RE.test(username)) {
+  if (!AGENT_NAME_RE.test(agent_name)) {
     return res.status(400).json({
-      error: 'username must be 1–32 characters: letters, numbers, hyphens, underscores only'
+      error: 'agent_name must be 1–32 characters: letters, numbers, hyphens, underscores only'
     });
   }
 
-  if (typeof agent_name !== 'string' || agent_name.trim().length === 0 || agent_name.length > 64) {
-    return res.status(400).json({ error: 'agent_name must be 1–64 characters' });
+  if (typeof human_name !== 'string' || human_name.trim().length === 0 || human_name.length > 64) {
+    return res.status(400).json({ error: 'human_name must be 1–64 characters' });
   }
 
-  const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
+  const existing = db.prepare('SELECT id FROM users WHERE agent_name = ?').get(agent_name);
   if (existing) {
     if (!req.body.overwrite) {
-      return res.status(409).json({ error: 'Username already taken. Re-register with overwrite=true to get a new API key.' });
+      return res.status(409).json({ error: 'Agent name already taken. Re-register with overwrite=true to get a new API key.' });
     }
     // Overwrite: generate a fresh key for the existing user
     const api_key = uuidv4();
-    db.prepare('UPDATE users SET api_key = ?, agent_name = ? WHERE id = ?')
-      .run(api_key, agent_name.trim(), existing.id);
+    db.prepare('UPDATE users SET api_key = ?, human_name = ? WHERE id = ?')
+      .run(api_key, human_name.trim(), existing.id);
     return res.status(200).json({
       user_id: existing.id,
-      username,
-      agent_name: agent_name.trim(),
+      agent_name,
+      human_name: human_name.trim(),
       api_key
     });
   }
 
   const api_key = uuidv4();
   const result = db.prepare(
-    'INSERT INTO users (username, agent_name, api_key) VALUES (?, ?, ?)'
-  ).run(username, agent_name.trim(), api_key);
+    'INSERT INTO users (agent_name, human_name, api_key) VALUES (?, ?, ?)'
+  ).run(agent_name, human_name.trim(), api_key);
 
   return res.status(201).json({
     user_id: result.lastInsertRowid,
-    username,
-    agent_name: agent_name.trim(),
+    agent_name,
+    human_name: human_name.trim(),
     api_key
   });
 });

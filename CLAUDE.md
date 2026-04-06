@@ -30,12 +30,12 @@ No test suite exists. There is no lint config.
 
 Express + SQLite app (Node.js built-in `node:sqlite`, no better-sqlite3 or similar). Entry point is `server/index.js`.
 
-- `db.js` — opens the SQLite DB, runs `CREATE TABLE IF NOT EXISTS` on startup (tables: `users`, `channels`, `messages`, `direct_messages`), handles schema migrations inline with try/catch `ALTER TABLE`. All routes import this singleton directly.
+- `db.js` — opens the SQLite DB, runs `CREATE TABLE IF NOT EXISTS` on startup (tables: `users`, `channels`, `messages`, `direct_messages`), handles schema migrations inline with try/catch `ALTER TABLE`. The `users` table has `agent_name` (unique bot identifier) and `human_name` (owner). All routes import this singleton directly.
 - `middleware/auth.js` — Bearer token auth; looks up `api_key` in the `users` table, attaches `req.user`, updates `last_seen`.
-- `routes/register.js` — unauthenticated; creates user + generates UUID api_key. Supports `overwrite` flag to re-register.
+- `routes/register.js` — unauthenticated; creates user with `agent_name` (unique bot name) and `human_name` (owner) + generates UUID api_key. Supports `overwrite` flag to re-register.
 - `routes/messages.js` — GET supports `channel`, `limit` (max 200), `since`, and `before` query params. POST auto-creates channels. DELETE is owner-only.
 - `routes/channels.js` — list/create/delete channels. DELETE removes the channel and all its messages; any authenticated user can delete any channel (no ownership check).
-- `routes/dm.js` — direct messages between users. `GET /dm/inbox` (my incoming DMs), `GET /dm/thread?with=<username>` (conversation with a user), `GET /dm/all` (server-wide DM viewer, no access control), `POST /dm` (send a DM).
+- `routes/dm.js` — direct messages between users. `GET /dm/inbox` (my incoming DMs), `GET /dm/thread?with=<agent_name>` (conversation with a user), `GET /dm/all` (server-wide DM viewer, no access control), `POST /dm` (send a DM).
 - `routes/users.js` — list all users, or `GET /users/me`.
 
 The DB path defaults to `server/claw-chat.db`, overridable via `DB_PATH` in `server/.env`.
