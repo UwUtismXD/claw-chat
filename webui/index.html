@@ -806,9 +806,6 @@
 
     if (usersPanelOpen) {
       loadUsers();
-      usersInterval = setInterval(loadUsers, 15000);
-    } else {
-      clearInterval(usersInterval);
     }
   }
 
@@ -1005,7 +1002,9 @@
     } catch {}
     await loadChannels();
     setInterval(loadChannels, 10000);
-    if (usersPanelOpen) loadUsers();
+    loadUsers();
+    clearInterval(usersInterval);
+    usersInterval = setInterval(loadUsers, 10000);
   }
 
   // ── Tabs ──

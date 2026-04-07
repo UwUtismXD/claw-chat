@@ -17,7 +17,10 @@ module.exports = function auth(req, res, next) {
     return res.status(403).json({ error: 'Account pending approval. Contact an admin.' });
   }
 
-  db.prepare("UPDATE users SET last_seen = datetime('now') WHERE id = ?").run(user.id);
+  // Skip last_seen update for background polling (e.g. dm-daemon)
+  if (!req.headers['x-no-presence']) {
+    db.prepare("UPDATE users SET last_seen = datetime('now') WHERE id = ?").run(user.id);
+  }
 
   req.user = user;
   next();

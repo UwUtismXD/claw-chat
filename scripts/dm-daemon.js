@@ -61,7 +61,9 @@ function logErr(msg, err) {
 function buildMessage(dms) {
   const sendDm = path.join(__dirname, 'send-dm.js');
   const lines = [];
-  lines.push('You have received new claw-chat direct messages. You MUST reply to each one.');
+  lines.push('You have received new claw-chat direct messages. Read them and reply only if you have something meaningful to say.');
+  lines.push('Do NOT reply just to acknowledge — only reply if the message asks a question, needs a response, or you have something useful to add.');
+  lines.push('It is perfectly fine to not reply at all.');
   lines.push('');
   for (const m of dms) {
     lines.push(`From: ${m.from_agent} (${m.from_human})`);
@@ -69,12 +71,12 @@ function buildMessage(dms) {
     lines.push(`To reply, run: node ${sendDm} ${m.from_agent} "your reply here"`);
     lines.push('');
   }
-  lines.push('Run the reply commands above now. Do not skip any.');
   return lines.join('\n');
 }
 
 let lastSeen = loadLastSeen();
 let triggering = false;
+let pendingDms = [];   // DMs queued while a trigger is in progress
 
 async function poll() {
   try {
@@ -82,7 +84,7 @@ async function poll() {
     if (lastSeen) params.set('since', lastSeen);
 
     const res = await fetch(`${url}/dm/inbox?${params}`, {
-      headers: { 'Authorization': `Bearer ${apiKey}` }
+      headers: { 'Authorization': `Bearer ${apiKey}`, 'X-No-Presence': '1' }
     });
 
     if (!res.ok) {
@@ -100,27 +102,43 @@ async function poll() {
       log(`DM from ${m.from_agent} (${m.from_human}): ${m.content}`);
     }
 
-    if (!triggering) {
-      triggering = true;
-      const text = buildMessage(dms);
-      log(`Triggering OpenClaw agent turn:\n${text}`);
-
-      // Use 'agent --message' for a direct agent turn (not a heartbeat)
-      const args = [...ocPrefix, 'agent', '--agent', openclawAgent, '--message', text, '--json'];
-      const child = spawn(ocExe, args, { stdio: ['ignore', 'pipe', 'pipe'] });
-      let out = '';
-      child.stdout.on('data', d => { out += d.toString(); });
-      child.stderr.on('data', d => { out += d.toString(); });
-      child.on('error', err => logErr('Failed to spawn openclaw', err));
-      child.on('close', code => {
-        if (out.trim()) log(`openclaw response: ${out.trim()}`);
-        log(`openclaw exited with code ${code}`);
-        triggering = false;
-      });
+    if (triggering) {
+      // Queue DMs so they aren't lost — they'll be sent on next trigger
+      pendingDms.push(...dms);
+      log(`Agent busy — queued ${dms.length} DM(s) (${pendingDms.length} total pending)`);
+      return;
     }
+
+    triggerAgent(dms);
   } catch (err) {
     logErr('Poll failed', err);
   }
+}
+
+function triggerAgent(dms) {
+  triggering = true;
+  const text = buildMessage(dms);
+  log(`Triggering OpenClaw agent turn:\n${text}`);
+
+  // Use 'agent --message' for a direct agent turn (not a heartbeat)
+  const args = [...ocPrefix, 'agent', '--agent', openclawAgent, '--message', text, '--json'];
+  const child = spawn(ocExe, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+  let out = '';
+  child.stdout.on('data', d => { out += d.toString(); });
+  child.stderr.on('data', d => { out += d.toString(); });
+  child.on('error', err => logErr('Failed to spawn openclaw', err));
+  child.on('close', code => {
+    if (out.trim()) log(`openclaw response: ${out.trim()}`);
+    log(`openclaw exited with code ${code}`);
+    triggering = false;
+
+    // If DMs arrived while we were busy, trigger again with the queued batch
+    if (pendingDms.length > 0) {
+      const queued = pendingDms.splice(0);
+      log(`Processing ${queued.length} queued DM(s)`);
+      triggerAgent(queued);
+    }
+  });
 }
 
 log(`claw-chat DM daemon started (polling every ${POLL_MS / 1000}s)`);
