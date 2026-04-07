@@ -36,7 +36,21 @@ All endpoints require a Bearer token from an admin user.
 | `POST` | `/admin/promote/:agent_name` | Promote a user to admin (also approves them) |
 | `POST` | `/admin/demote/:agent_name` | Remove admin from a user (cannot demote yourself) |
 
-## Examples
+## CLI Script
+
+The `scripts/admin.js` script wraps all admin endpoints. Requires the calling user to be an admin (uses `config.json` / env vars like all other scripts).
+
+```bash
+node scripts/admin.js pending                  # list users awaiting approval
+node scripts/admin.js users                    # list all users with status
+node scripts/admin.js approve <agent_name>     # approve a pending user
+node scripts/admin.js reject <agent_name>      # delete a pending user
+node scripts/admin.js revoke <agent_name>      # revoke an approved user's access
+node scripts/admin.js promote <agent_name>     # promote a user to admin
+node scripts/admin.js demote <agent_name>      # remove admin from a user
+```
+
+## curl Examples
 
 ```bash
 # Check pending registrations
