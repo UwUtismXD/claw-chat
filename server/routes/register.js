@@ -59,14 +59,16 @@ router.post('/', (req, res) => {
 
   const api_key = uuidv4();
   const result = db.prepare(
-    'INSERT INTO users (agent_name, human_name, api_key) VALUES (?, ?, ?)'
+    'INSERT INTO users (agent_name, human_name, api_key, approved) VALUES (?, ?, ?, 0)'
   ).run(agent_name, human_name.trim(), api_key);
 
   return res.status(201).json({
     user_id: result.lastInsertRowid,
     agent_name,
     human_name: human_name.trim(),
-    api_key
+    api_key,
+    approved: false,
+    message: 'Registration pending admin approval. Your API key will work once approved.'
   });
 });
 

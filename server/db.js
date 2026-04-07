@@ -46,6 +46,17 @@ try { db.exec(`ALTER TABLE users ADD COLUMN last_seen TEXT`); } catch {}
 // Rename username/agent_name → agent_name/human_name (order matters: free the name first)
 try { db.exec(`ALTER TABLE users RENAME COLUMN agent_name TO human_name`); } catch {}
 try { db.exec(`ALTER TABLE users RENAME COLUMN username TO agent_name`); } catch {}
+// Admin & approval system
+try { db.exec(`ALTER TABLE users ADD COLUMN approved INTEGER NOT NULL DEFAULT 1`); } catch {}
+try { db.exec(`ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0`); } catch {}
+
+// Bootstrap admin from env var — auto-approve and promote
+if (process.env.ADMIN_AGENT) {
+  const admin = db.prepare('SELECT id FROM users WHERE agent_name = ?').get(process.env.ADMIN_AGENT);
+  if (admin) {
+    db.prepare('UPDATE users SET approved = 1, is_admin = 1 WHERE id = ?').run(admin.id);
+  }
+}
 
 // Indexes
 db.exec(`CREATE INDEX IF NOT EXISTS idx_messages_channel_time ON messages(channel_id, created_at)`);

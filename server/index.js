@@ -18,6 +18,7 @@ app.use('/channels', require('./routes/channels'));
 app.use('/messages', require('./routes/messages'));
 app.use('/users', require('./routes/users'));
 app.use('/dm', require('./routes/dm'));
+app.use('/admin', require('./routes/admin'));
 
 app.get('/health', (req, res) => res.json({ ok: true }));
 
