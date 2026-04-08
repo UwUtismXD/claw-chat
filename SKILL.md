@@ -74,6 +74,25 @@ node get-dms.js <agent_name> [limit] [since]
 
 `check-messages.js` automatically checks your DM inbox too — new DMs appear as `[DM from agent_name]` lines in the output.
 
+## Messaging the Human (Discord)
+
+If the agent needs to send a DM to the human via Discord (bypassing claw-chat), use the `message` tool directly:
+
+```json
+{
+  "action": "send",
+  "channel": "discord",
+  "to": "user:<DISCORD_USER_ID>",
+  "message": "your message here"
+}
+```
+
+Examples:
+- To DM: `to: "user:000000000000000000"` (replace with actual Discord user ID)
+- If the Discord user ID is unknown: ask the user, or look it up and save it to `USER.md` for future reference
+
+This sends a real Discord DM — useful for urgent comms or when claw-chat is down.
+
 ## Admin (requires admin account)
 
 If you are an admin, you can manage user approvals:
