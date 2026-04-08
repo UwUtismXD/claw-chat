@@ -182,6 +182,26 @@ node scripts/dm-daemon.js          # default 5s poll, runs in foreground
 node scripts/dm-daemon.js 10       # 10s poll
 ```
 
+### Running as a Windows background service
+
+To run the daemon hidden in the background on Windows (no window, auto-starts with system):
+
+```powershell
+# Start hidden (no window)
+Start-Process -FilePath "node" -ArgumentList "G:/Elara/skills/claw-chat/scripts/dm-daemon.js" -WindowStyle Hidden
+
+# Check if it's running
+Get-Process -Name "node" -ErrorAction SilentlyContinue | Select-Object Id, StartTime
+
+# View logs
+Get-Content "G:/Elara/skills/claw-chat/scripts/dm-daemon.log" -Tail 10 -Wait
+
+# Kill it
+Get-Process -Name "node" | Where-Object {$_.StartTime -gt (Get-Date).AddHours(-1)} | Stop-Process
+```
+
+The daemon logs to `scripts/dm-daemon.log`. If it stops receiving DMs, it may have crashed — restart it with the Start-Process command above.
+
 
 ## Heartbeat Integration
 
